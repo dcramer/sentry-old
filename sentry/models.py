@@ -3,6 +3,10 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
+try:
+    import cmath as math
+except ImportError:
+    import math
 import datetime
 import logging
 import sys
@@ -10,7 +14,6 @@ import sys
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models, transaction
-from django.db.models.signals import post_syncdb
 from django.utils.translation import ugettext_lazy as _
 
 from sentry import conf
@@ -107,8 +110,13 @@ class Group(models.Model):
     time_spent      = models.FloatField(default=0.0)
     first_seen      = models.DateTimeField(default=datetime.datetime.now)
     last_seen       = models.DateTimeField(default=datetime.datetime.now)
+    score           = models.FloatField(default=0.0, db_index=True)
     tags            = models.ManyToManyField(Tag)
     
+    def save(self, *args, **kwargs):
+        self.score = math.log(self.count) * 600 + int(self.last_seen)
+        super(Group, self).save(*args, **kwargs)
+
     @models.permalink
     def get_absolute_url(self):
         return ('sentry-group', (self.pk,), {})
@@ -133,34 +141,6 @@ class Event(models.Model):
         if not self.hash:
             self.hash = construct_checksum(**self.__dict__)
         super(Event, self).save(*args, **kwargs)
-
-    @classmethod
-    def create_sort_index(cls, sender, db, created_models, **kwargs):
-        engine = get_db_engine()
-        if not engine.startswith('postgresql'):
-            return
-        if cls not in created_models:
-            return
-
-        from django.db import connections
-        
-        try:
-            cursor = connections[db].cursor()
-            cursor.execute("create index sentry_groupedmessage_score on sentry_groupedmessage ((%s))" % (cls.get_score_clause(),))
-            cursor.close()
-        except:
-            transaction.rollback()
-        
-    @classmethod
-    def get_score_clause(cls):
-        # TODO: rethink sort clause to include time_spent
-
-        engine = get_db_engine()
-        if engine.startswith('postgresql'):
-            return 'log(times_seen) * 600 + last_seen::abstime::int'
-        if engine.startswith('mysql'):
-            return 'log(times_seen) * 600 + unix_timestamp(last_seen)'
-        return 'times_seen'
 
     def mail_admins(self, request=None, fail_silently=True):
         if not conf.ADMINS:
@@ -217,7 +197,3 @@ class RequestEvent(object):
             fake_request.path_info = ''
         fake_request.path = fake_request.path_info
         return fake_request
-
-# XXX: Django sucks and we can't listen to our specific app
-# post_syncdb.connect(GroupedMessage.create_sort_index, sender=__name__)
-post_syncdb.connect(GroupedMessage.create_sort_index, sender=sys.modules[__name__])
