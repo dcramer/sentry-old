@@ -104,7 +104,7 @@ class Group(models.Model):
 
     # this is the combination of md5(' '.join(tags)) + md5(event)
     hash            = models.CharField(max_length=64, unique=True)
-    data            = SerializedDictField(null=True)
+    data            = GzippedDictField(null=True)
     status          = models.PositiveIntegerField(default=0, choices=STATUS_LEVELS, db_index=True)
     count           = models.PositiveIntegerField(default=0)
     time_spent      = models.FloatField(default=0.0)
