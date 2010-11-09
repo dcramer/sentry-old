@@ -18,7 +18,6 @@ from django.utils.translation import ugettext_lazy as _
 
 from sentry import conf
 from sentry.helpers import cached_property, construct_checksum, get_db_engine, transform, get_filters
-from sentry.manager import GroupedMessageManager, SentryManager
 from sentry.reporter import FakeRequest
 
 _reqs = ('paging',)
@@ -86,6 +85,18 @@ class Tag(models.Model):
             self.hash = construct_checksum(**self.__dict__)
         super(Event, self).save(*args, **kwargs)
 
+class TagValue(models.Model):
+    """
+    Stores a unique value of a tag.
+    """
+    
+    tag             = models.ManyToManyField(Tag)
+    value           = models.CharField()
+    count           = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        unique_together = (('tag', 'value'),)
+    
 class TagCount(models.Model):
     """
     Stores the total number of events recorded for a combination of tags.
@@ -100,7 +111,6 @@ class Group(models.Model):
     """
     Stores an aggregate (summary) of Event's for a combination of tags.
     """
-    # XXX: do we need an m2m on Group?
 
     # this is the combination of md5(' '.join(tags)) + md5(event)
     hash            = models.CharField(max_length=64, unique=True)
