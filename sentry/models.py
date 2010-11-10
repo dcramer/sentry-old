@@ -71,31 +71,24 @@ class GzippedDictField(models.TextField):
 
 class Tag(models.Model):
     """
-    Stores an individual tag and its checksum.
-    """
-    
-    hash            = models.CharField(max_length=32, unique=True)
-    value           = models.TextField()
-
-    def __unicode__(self):
-        return self.value
-
-    def save(self, *args, **kwargs):
-        if not self.hash:
-            self.hash = construct_checksum(**self.__dict__)
-        super(Event, self).save(*args, **kwargs)
-
-class TagValue(models.Model):
-    """
     Stores a unique value of a tag.
     """
     
-    tag             = models.ManyToManyField(Tag)
+    key             = models.CharField(max_length=16)
+    hash            = models.CharField(max_length=32)
     value           = models.CharField()
     count           = models.PositiveIntegerField(default=0)
     
     class Meta:
-        unique_together = (('tag', 'value'),)
+        unique_together = (('key', 'hash'),)
+    
+    def __unicode__(self):
+        return u"%s=%s" % (self.tag, self.value)
+    
+    def save(self, *args, **kwargs):
+        if not self.hash:
+            self.hash = hashlib.md5(self.value).hexdigest()
+        super(Tag, self).save(*args, **kwargs)
     
 class TagCount(models.Model):
     """
@@ -107,13 +100,18 @@ class TagCount(models.Model):
     tag             = models.ManyToManyField(Tag)
     count           = models.PositiveIntegerField(default=0)
 
+    @classmethod
+    def get_tags_hash(cls, tags):
+        return hashlib.md5(' '.join(unicode(t) for t in tags))
+
 class Group(models.Model):
     """
     Stores an aggregate (summary) of Event's for a combination of tags.
     """
 
     # this is the combination of md5(' '.join(tags)) + md5(event)
-    hash            = models.CharField(max_length=64, unique=True)
+    type            = models.CharField(max_length=32)
+    hash            = models.CharField(max_length=64)
     data            = GzippedDictField(null=True)
     status          = models.PositiveIntegerField(default=0, choices=STATUS_LEVELS, db_index=True)
     count           = models.PositiveIntegerField(default=0)
@@ -122,6 +120,9 @@ class Group(models.Model):
     last_seen       = models.DateTimeField(default=datetime.datetime.now)
     score           = models.FloatField(default=0.0, db_index=True)
     tags            = models.ManyToManyField(Tag)
+    
+    class Meta:
+        unique_together = (('hash', 'type'),)
     
     def save(self, *args, **kwargs):
         self.score = math.log(self.count) * 600 + int(self.last_seen)
@@ -139,7 +140,7 @@ class Event(models.Model):
     
     # the hash of this event is defined by its processor (type)
     hash            = models.CharField(max_length=32)
-    type            = models.CharField(max_length=64)
+    type            = models.CharField(max_length=32)
     data            = GzippedDictField(null=True)
     date            = models.DateTimeField(default=datetime.datetime.now)
     tags            = models.ManyToManyField(Tag)
