@@ -16,18 +16,19 @@ if DATABASE_USING:
 THRASHING_TIMEOUT = getattr(settings, 'SENTRY_THRASHING_TIMEOUT', 60)
 THRASHING_LIMIT = getattr(settings, 'SENTRY_THRASHING_LIMIT', 10)
 
+# Sentry allows you to specify an alternative search backend for itself
+SEARCH_ENGINE = getattr(settings, 'SENTRY_SEARCH_ENGINE', None)
+SEARCH_OPTIONS = getattr(settings, 'SENTRY_SEARCH_OPTIONS', {})
+SEARCH_UPDATES = getattr(settings, 'SENTRY_SEARCH_UPDATES', 'realtime')
+
 FILTERS = getattr(settings, 'SENTRY_FILTERS', filter(None, (
-    getattr(settings, 'HAYSTACK_SEARCH_ENGINE', 'dummy') != 'dummy' and 'sentry.filters.SearchFilter' or None,
+    SEARCH_ENGINE and 'sentry.filters.SearchFilter' or None,
     'sentry.filters.StatusFilter',
     'sentry.filters.LoggerFilter',
     'sentry.filters.LevelFilter',
     'sentry.filters.ServerNameFilter',
     'sentry.filters.SiteFilter',
 )))
-
-# Sentry allows you to specify an alternative search backend for itself
-SEARCH_ENGINE = getattr(settings, 'SENTRY_SEARCH_ENGINE', None)
-SEARCH_OPTIONS = getattr(settings, 'SENTRY_SEARCH_OPTIONS', {})
 
 KEY = getattr(settings, 'SENTRY_KEY', md5_constructor(settings.SECRET_KEY).hexdigest())
 

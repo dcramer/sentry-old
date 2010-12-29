@@ -133,7 +133,7 @@ class GroupedMessage(MessageBase):
 
     @models.permalink
     def get_absolute_url(self):
-        return ('sentry-group', (self.pk,), {})
+        return ('sentry:group', (self.pk,), {})
 
     def natural_key(self):
         return (self.logger, self.view, self.checksum)
@@ -247,7 +247,7 @@ class Message(MessageBase):
 
     @models.permalink
     def get_absolute_url(self):
-        return ('sentry-group-message', (self.group_id, self.pk), {})
+        return ('sentry:group-message', (self.group_id, self.pk), {})
     
     def shortened_url(self):
         if not self.url:
