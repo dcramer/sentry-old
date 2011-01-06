@@ -10,6 +10,11 @@ An event consists of anything an extension allows, but but could include
 things like a website view, a sql query, or a logging message. Events are
 formed by processors, which control how they are stored and tagged.
 
+When a event occurs, the client may optionally generate an ID (a standard 32
+character UUID) which should be unique to this event, and pass it to the user.
+This ID can then be referenced as a point of entry for all events which correlate
+to this.
+
 Events can have many tags, and must have a unique 'type' which describe how
 this event is rendered. Events of separate types cannot be aggregated
 together.
