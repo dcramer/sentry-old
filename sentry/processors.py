@@ -17,11 +17,14 @@ class LogMessageProcessor(Processor):
         - url: absolute URI where log message occurred
         - extra: dictionary of meta information (such as GET, POST, META)
         """
+        if exc_info:
+            return ExceptionProcessor().store(message, exc_info, url, extra)
+
         return store_event(
             processor=self,
             tags={
                 'url': url,
-                'view': view,
+                'func': func,
             },
             data={
                 'message': message,

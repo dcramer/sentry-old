@@ -102,7 +102,7 @@ class TagCount(models.Model):
 
     @classmethod
     def get_tags_hash(cls, tags):
-        return hashlib.md5(' '.join(unicode(t) for t in tags))
+        return hashlib.md5(' '.join('='.join(t) for t in tags))
 
 class Group(models.Model):
     """
@@ -112,7 +112,8 @@ class Group(models.Model):
     # this is the combination of md5(' '.join(tags)) + md5(event)
     type            = models.CharField(max_length=32)
     hash            = models.CharField(max_length=64)
-    data            = GzippedDictField(null=True)
+    # one line summary used for rendering
+    message         = models.TextField(null=True)
     status          = models.PositiveIntegerField(default=0, choices=STATUS_LEVELS, db_index=True)
     count           = models.PositiveIntegerField(default=0)
     time_spent      = models.FloatField(default=0.0)
@@ -141,8 +142,9 @@ class Event(models.Model):
     # the hash of this event is defined by its processor (type)
     hash            = models.CharField(max_length=32)
     type            = models.CharField(max_length=32)
-    data            = GzippedDictField(null=True)
     date            = models.DateTimeField(default=datetime.datetime.now)
+    # XXX: possibly need to store this completely denormalized so its:
+    # [(tag, value), (tag, value)]
     tags            = models.ManyToManyField(Tag)
     
     class Meta:
@@ -188,6 +190,18 @@ class Event(models.Model):
         send_mail(subject, body,
                   settings.SERVER_EMAIL, conf.ADMINS,
                   fail_silently=fail_silently)
+
+class EventMeta(models.Model):
+    """
+    To maintain compatibility with SQL and Key/Value stores we need to
+    store additional values as one key per event.
+    """
+    event           = models.OneToOneField(Event)
+    key             = models.CharField(max_length=32)
+    value           = models.TextField()
+    
+    class Meta:
+        unique_together = (('event', 'key'),)
 
 class RequestEvent(object):
     def __init__(self, data):
