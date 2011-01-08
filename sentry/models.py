@@ -35,7 +35,7 @@ except ImportError:
 
 __all__ = ('Message', 'GroupedMessage')
 
-STATUS_LEVELS = (
+STATE_CHOICES = (
     (0, _('unresolved')),
     (1, _('resolved')),
 )
@@ -114,12 +114,13 @@ class Group(models.Model):
     hash            = models.CharField(max_length=64)
     # one line summary used for rendering
     message         = models.TextField(null=True)
-    status          = models.PositiveIntegerField(default=0, choices=STATUS_LEVELS, db_index=True)
+    state           = models.PositiveIntegerField(default=0, choices=STATE_CHOICES, db_index=True)
     count           = models.PositiveIntegerField(default=0)
     time_spent      = models.FloatField(default=0.0)
     first_seen      = models.DateTimeField(default=datetime.datetime.now)
     last_seen       = models.DateTimeField(default=datetime.datetime.now)
-    score           = models.FloatField(default=0.0, db_index=True)
+    # XXX: why did I add this?
+    # score           = models.FloatField(default=0.0, db_index=True)
     tags            = models.ManyToManyField(Tag)
     
     class Meta:

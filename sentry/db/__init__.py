@@ -65,3 +65,27 @@ class BaseEvent(object):
                         client.incr(Group, {'type': type, 'hash': tags_hash + event.hash}, 'time_spent', time_spent)
                     client.set(Group, {'type': type, 'hash': tags_hash + event.hash}, status=0, last_seen=current_datetime)
                     is_new = True
+
+class MessageEvent(BaseEvent):
+    """
+    Messages store the following metadata:
+    
+    - msg_value: 'My message'
+    """
+
+class ExceptionEvent(BaseEvent):
+    """
+    Exceptions store the following metadata:
+
+    - exc_value: 'My exception value'
+    - exc_type: 'module.ClassName'
+    - exc_frames: [(line number, line text, filename, truncated locals)]
+    """
+
+class SQLEvent(BaseEvent):
+    """
+    Messages store the following metadata:
+    
+    - sql_value: 'SELECT * FROM table'
+    - sql_engine: 'postgesql_psycopg2'
+    """

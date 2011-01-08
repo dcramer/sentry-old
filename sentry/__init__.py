@@ -37,6 +37,27 @@ operations and architecture are:
 It's possible that the relational queries could be denormalized so that any standard
 key value store is useable. This would mean additional writes in order to store indexes
 for all combinations of tags on each event.
+
+Several example use cases for tags:
+
+- level = 'warning'
+- func = 'module.function_name'
+- url = 'http://...'
+- server = 'localhost'
+- project = 'my project name'
+
+Views, which determine how things are aggregated and rendered, should be intelligent
+with grouping. For example, if you specify the following views:
+
+- exceptions by [project, url]
+- queries by [project, url]
+- exceptions by [func]
+
+We should be able to determine (automatically?) that we want a top level view of things
+broken down by project, and once there, being able to break down those projects by either
+exceptions or queries. The one issue which arises here, is that it should be intelligent
+enough to know that the length of values for a key should determine if it does the breakdown
+or if it simply renders the aggregate views.
 """
 
 __all__ = ('__version__', '__build__', '__docformat__', 'get_revision')
