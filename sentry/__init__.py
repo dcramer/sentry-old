@@ -58,6 +58,17 @@ broken down by project, and once there, being able to break down those projects 
 exceptions or queries. The one issue which arises here, is that it should be intelligent
 enough to know that the length of values for a key should determine if it does the breakdown
 or if it simply renders the aggregate views.
+
+Processor Ideas:
+
+- Exception logging (per framework)
+- General logging integration (as well as LogBook)
+- Query log processing for MySQL and PGSQL
+- Index usage graphing of some sorts (this is great for reporting but we want to sort by least used,
+  rather than most, so it may need thresholds of some sorts)?
+
+    SELECT * FROM pg_stat_user_indexes WHERE indexrelname='<INDEX>'
+
 """
 
 __all__ = ('__version__', '__build__', '__docformat__', 'get_revision')
