@@ -64,10 +64,6 @@ Processor Ideas:
 - Exception logging (per framework)
 - General logging integration (as well as LogBook)
 - Query log processing for MySQL and PGSQL
-- Index usage graphing of some sorts (this is great for reporting but we want to sort by least used,
-  rather than most, so it may need thresholds of some sorts)?
-
-    SELECT * FROM pg_stat_user_indexes WHERE indexrelname='<INDEX>'
 
 """
 
