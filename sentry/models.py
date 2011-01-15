@@ -225,7 +225,16 @@ class GroupedMessage(MessageBase):
                    .values('site', 'times_seen')\
                    .order_by('-times_seen')
 
+    def get_version(self):
+        if not self.data:
+            return
+        if 'version' not in self.data:
+            return
+        module = self.data.get('module', 'ver')
+        return module, self.data['version']
+
 class Message(MessageBase):
+    message_id      = models.CharField(max_length=32, null=True, unique=True)
     group           = models.ForeignKey(GroupedMessage, blank=True, null=True, related_name="message_set")
     datetime        = models.DateTimeField(default=datetime.datetime.now, db_index=True)
     url             = models.URLField(verify_exists=False, null=True, blank=True)
@@ -279,6 +288,16 @@ class Message(MessageBase):
             fake_request.path_info = ''
         fake_request.path = fake_request.path_info
         return fake_request
+
+    def get_version(self):
+        if not self.data:
+            return
+        if '__sentry__' not in self.data:
+            return
+        if 'version' not in self.data['__sentry__']:
+            return
+        module = self.data['__sentry__'].get('module', 'ver')
+        return module, self.data['__sentry__']['version']
 
 class FilterValue(models.Model):
     FILTER_KEYS = (

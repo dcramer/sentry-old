@@ -34,6 +34,7 @@ class SentryManager(models.Manager):
         server_name = kwargs.pop('server_name', conf.CLIENT)
         site = kwargs.pop('site', None)
         data = kwargs.pop('data', {}) or {}
+        message_id = kwargs.pop('message_id', None)
 
         if url:
             data['url'] = url
@@ -45,8 +46,15 @@ class SentryManager(models.Manager):
 
         mail = False
         try:
+            kwargs['data'] = {}
+
             if 'url' in data:
-                kwargs['data'] = {'url': data['url']}
+                kwargs['data']['url'] = data['url']
+            if 'version' in data.get('__sentry__', {}):
+                kwargs['data']['version'] = data['__sentry__']['version']
+            if 'module' in data.get('__sentry__', {}):
+                kwargs['data']['module'] = data['__sentry__']['module']
+
             group, created = GroupedMessage.objects.get_or_create(
                 view=view,
                 logger=logger_name,
@@ -71,6 +79,7 @@ class SentryManager(models.Manager):
             else: 
                 mail = True
             instance = Message.objects.create(
+                message_id=message_id,
                 view=view,
                 logger=logger_name,
                 data=data,

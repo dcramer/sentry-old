@@ -7,22 +7,71 @@ import logging
 import sys
 import traceback
 import urllib2
+import uuid
 
 from django.core.cache import cache
 from django.template import TemplateSyntaxError
 from django.views.debug import ExceptionReporter
 
 from sentry import conf
-from sentry.helpers import construct_checksum, varmap, transform, get_installed_apps, urlread, force_unicode
+from sentry.helpers import construct_checksum, varmap, transform, get_installed_apps, urlread, force_unicode, \
+                           get_versions
 
 logger = logging.getLogger('sentry.errors')
 
 class SentryClient(object):
     def process(self, **kwargs):
+        "Processes the message before passing it on to the server"
         from sentry.helpers import get_filters
+
+        if kwargs.get('data'):
+            # Ensure we're not changing the original data which was passed
+            # to Sentry
+            kwargs['data'] = kwargs['data'].copy()
+
+        request = kwargs.pop('request', None)
+        if request:
+            if not kwargs.get('data'):
+                kwargs['data'] = {}
+            kwargs['data'].update(dict(
+                META=request.META,
+                POST=request.POST,
+                GET=request.GET,
+                COOKIES=request.COOKIES,
+            ))
+
+            if not kwargs.get('url'):
+                kwargs['url'] = request.build_absolute_uri()
 
         kwargs.setdefault('level', logging.ERROR)
         kwargs.setdefault('server_name', conf.NAME)
+
+        # save versions of all installed apps
+        if 'data' not in kwargs or '__sentry__' not in (kwargs['data'] or {}):
+            if kwargs.get('data') is None:
+                kwargs['data'] = {}
+            kwargs['data']['__sentry__'] = {}
+
+        versions = get_versions()
+        kwargs['data']['__sentry__']['versions'] = versions
+
+        if kwargs.get('view'):
+            # get list of modules from right to left
+            parts = kwargs['view'].split('.')
+            module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
+            version = None
+            module = None
+            for m in module_list:
+                if m in versions:
+                    module = m
+                    version = versions[m]
+
+            # store our "best guess" for application version
+            if version:
+                kwargs['data']['__sentry__'].update({
+                    'version': version,
+                    'module': module,
+                })
 
         if 'checksum' not in kwargs:
             checksum = construct_checksum(**kwargs)
@@ -46,12 +95,19 @@ class SentryClient(object):
         for filter_ in get_filters():
             kwargs = filter_(None).process(kwargs) or kwargs
         
+        # create ID client-side so that it can be passed to application
+        message_id = uuid.uuid4().hex
+        kwargs['message_id'] = message_id
+
         # Make sure all data is coerced
         kwargs = transform(kwargs)
 
-        return self.send(**kwargs)
+        self.send(**kwargs)
+        
+        return message_id
 
     def send(self, **kwargs):
+        "Sends the message to the server."
         if conf.REMOTE_URL:
             for url in conf.REMOTE_URL:
                 data = {
@@ -76,25 +132,11 @@ class SentryClient(object):
 
     def create_from_record(self, record, **kwargs):
         """
-        Creates an error log for a `logging` module `record` instance.
+        Creates an error log for a ``logging`` module ``record`` instance.
         """
-        for k in ('url', 'view', 'data'):
+        for k in ('url', 'view', 'request', 'data'):
             if k not in kwargs:
                 kwargs[k] = record.__dict__.get(k)
-        
-        request = getattr(record, 'request', None)
-        if request:
-            if not kwargs.get('data'):
-                kwargs['data'] = {}
-            kwargs['data'].update(dict(
-                META=request.META,
-                POST=request.POST,
-                GET=request.GET,
-                COOKIES=request.COOKIES,
-            ))
-
-            if not kwargs.get('url'):
-                kwargs['url'] = request.build_absolute_uri()
         
         kwargs.update({
             'logger': record.name,
@@ -121,7 +163,7 @@ class SentryClient(object):
 
     def create_from_text(self, message, **kwargs):
         """
-        Creates an error log for from ``type`` and ``message``.
+        Creates an error log for from ``message``.
         """
         return self.process(
             message=message,
@@ -212,3 +254,7 @@ class SentryClient(object):
             **kwargs
         )
 
+class DummyClient(SentryClient):
+    "Sends messages into an empty void"
+    def send(self, **kwargs):
+        return None

@@ -18,13 +18,15 @@ from django.utils.safestring import mark_safe
 
 from sentry import conf
 from sentry.helpers import get_filters
-from sentry.models import GroupedMessage
+from sentry.models import GroupedMessage, Message
 from sentry.plugins import GroupActionProvider
 from sentry.templatetags.sentry_helpers import with_priority
 from sentry.reporter import ImprovedExceptionReporter
 
 from nexus.modules import NexusModule
 from sentry.feeds import MessageFeed, SummaryFeed
+
+uuid_re = re.compile(r'^[a-z0-9]{32}$')
 
 class SentryNexusModule(NexusModule):
     home_url = 'index'
@@ -91,6 +93,14 @@ class SentryNexusModule(NexusModule):
         is_search = query
 
         if is_search:
+            if uuid_re.match(query):
+                # Forward to message if it exists
+                try:
+                    message = Message.objects.get(message_id=query)
+                except Message.DoesNotExist:
+                    pass
+                else:
+                    return HttpResponseRedirect(message.get_absolute_url())
             message_list = self.get_search_query_set(query)
         else:
             message_list = GroupedMessage.objects.extra(

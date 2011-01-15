@@ -23,10 +23,14 @@
         {% endif %}
     
         {% for filter in filters %}
-            <h2>{{ filter.label }}</h2>
-            <form method="get" action="{{ filter.get_query_string|safe }}">
-                {{ filter.render }}
-            </form>
+            <div class="sidebar-module sidebar-module-{{ filter.column }}">
+                {% if filter.has_label %}
+                    <h2>{{ filter.label }}</h2>
+                {% endif %}
+                <form method="get" action="{{ filter.get_query_string|safe }}">
+                    {{ filter.render }}
+                </form>
+            </div>
         {% endfor %}
     </div>
 
