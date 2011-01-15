@@ -99,6 +99,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.messages',
+    'nexus',
     'sentry',
     'sentry.client',
     'sentry.plugins.sentry_redmine',

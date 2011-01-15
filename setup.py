@@ -18,7 +18,7 @@ class mytest(test):
         # test.run(self, *args, **kwargs)
 
 setup(
-    name='django-sentry',
+    name='sentry',
     version='1.6.1',
     author='David Cramer',
     author_email='dcramer@gmail.com',
