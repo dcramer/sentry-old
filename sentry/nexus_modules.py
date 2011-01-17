@@ -255,11 +255,12 @@ class SentryNexusModule(NexusModule):
                     continue
                 yield k, v
 
-        json_data = iter_data(obj)
-
-        page = 'details'
-
-        return self.render_to_response('sentry/group/details.html', locals(), request)
+        return self.render_to_response('sentry/group/details.html', {
+            'page': 'details',
+            'group': group,
+            'json_data': iter_data(obj),
+            'traceback': traceback,
+        }, request)
 
     def group_message_list(self, request, group_id):
         group = get_object_or_404(GroupedMessage, pk=group_id)
@@ -268,7 +269,11 @@ class SentryNexusModule(NexusModule):
 
         page = 'messages'
 
-        return self.render_to_response('sentry/group/message_list.html', locals(), request)
+        return self.render_to_response('sentry/group/message_list.html', {
+            'page': 'messages',
+            'group': group,
+            'message_list': message_list,
+        }, request)
 
     def group_message_details(self, request, group_id, message_id):
         group = get_object_or_404(GroupedMessage, pk=group_id)
@@ -295,11 +300,13 @@ class SentryNexusModule(NexusModule):
                     continue
                 yield k, v
 
-        json_data = iter_data(message)
-
-        page = 'messages'
-
-        return self.render_to_response('sentry/group/message.html', locals(), request)
+        return self.render_to_response('sentry/group/message.html', {
+            'page': 'messages',
+            'json_data': iter_data(message),
+            'group': group,
+            'message': message,
+            'traceback': traceback,
+        }, request)
 
     def store(self, request):
         key = request.POST.get('key')
