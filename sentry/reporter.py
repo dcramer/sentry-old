@@ -140,20 +140,19 @@ TECHNICAL_500_TEMPLATE = """
 {% endif %}
 {% if template_info %}
 <div id="template">
-   <h2>Template error</h2>
-   <p>In template <code>{{ template_info.name }}</code>, error at line <strong>{{ template_info.line }}</strong></p>
-   <h3>{{ template_info.message }}</h3>
-   <table class="source{% if template_info.top %} cut-top{% endif %}{% ifnotequal template_info.bottom template_info.total %} cut-bottom{% endifnotequal %}">
-   {% for source_line in template_info.source_lines %}
-   {% ifequal source_line.0 template_info.line %}
-       <tr class="error"><th>{{ source_line.0 }}</th>
-       <td>{{ template_info.before }}<span class="specific">{{ template_info.during }}</span>{{ template_info.after }}</td></tr>
-   {% else %}
-      <tr><th>{{ source_line.0 }}</th>
-      <td>{{ source_line.1 }}</td></tr>
-   {% endifequal %}
-   {% endfor %}
-   </table>
+    <h2>Template error</h2>
+    <p>In template <code>{{ template_info.name }}</code>, error at line <strong>{{ template_info.line }}</strong></p>
+    <h3>{{ template_info.message }}</h3>
+    <ol>
+    {% for source_line in template_info.source_lines %}
+        <li class="{% if source_line.0 == template_info.line %} selected{% endif %}" value="{{ source_line.0 }}">
+        {% if source_line.0 == template_info.line %}
+            <pre>{{ template_info.before }}<span class="specific">{{ template_info.during }}</span>{{ template_info.after }}</pre>
+        {% else %}
+            <pre>{{ source_line.1 }}</pre>
+        {% endif %}
+    {% endfor %}
+    </table>
 </div>
 {% endif %}
 <div id="traceback">
@@ -208,18 +207,18 @@ TECHNICAL_500_TEMPLATE = """
 Environment:
 
 {% if request.META %}Request Method: {{ request.META.REQUEST_METHOD }}{% endif %}
-Request URL: {{ request.build_absolute_uri|escape }}
-
-{% if template_does_not_exist %}Template Loader Error: (Unavailable in db-log)
+Request URL: {{ request.build_absolute_uri|escape }}{% if template_does_not_exist %}Template Loader Error: (Unavailable in db-log)
 {% endif %}{% if template_info %}
-Template error:
-In template {{ template_info.name }}, error at line {{ template_info.line }}
-   {{ template_info.message }}{% for source_line in template_info.source_lines %}{% ifequal source_line.0 template_info.line %}
-   {{ source_line.0 }} : {{ template_info.before }} {{ template_info.during }} {{ template_info.after }}
-{% else %}
-   {{ source_line.0 }} : {{ source_line.1 }}
-{% endifequal %}{% endfor %}{% endif %}
+
+Template:
+
+{{ template_info.name }}, error at line {{ template_info.line }}
+
+   {{ template_info.message }}
+
+{% for source_line in template_info.source_lines %}{{ source_line.0 }}. {{ source_line.1 }}{% endfor %}{% endif %}
 Traceback:
+
 {% for frame in frames %}File "{{ frame.filename|escape }}" in {{ frame.function|escape }}
 {% if frame.context_line %}  {{ frame.lineno }}. {{ frame.context_line|escape }}{% endif %}
 {% endfor %}
