@@ -26,6 +26,14 @@ class RedisBackend(SentryBackend):
     def incr(self, schema, pk, key, amount=1):
         return self.conn.hincrby('data:%s:%s' % (self._get_schema_name(schema), pk), key, amount)
 
+    # meta data is stored in a seperate key to avoid collissions and heavy getall pulls
+
+    def set_meta(self, schema, pk, **values):
+        self.conn.hmset('metadata:%s:%s' % (self._get_schema_name(schema), pk), values)
+
+    def get_meta(self, schema, pk):
+        self.conn.hgetall('metadata:%s:%s' % (self._get_schema_name(schema), pk))
+
     ## Indexes using sorted sets
 
     def list(self, schema, index='default', offset=0, limit=0, desc=False):

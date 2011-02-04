@@ -64,8 +64,7 @@ class TagCount(models.Model):
     # this is md5(' '.join(tags))
     hash            = models.String() # length 32
     count           = models.Integer(default=0)
-
-    # M2M on tags
+    tags            = models.List()
 
     class Meta:
         ordering = 'count'
@@ -93,8 +92,7 @@ class Group(models.Model):
     last_seen       = models.DateTime(default=datetime.datetime.now)
     # This is a meta element which needs magically created or something
     # score           = models.Float(default=0.0)
-
-    # M2M on tags
+    tags            = models.List()
 
     class Meta:
         ordering = 'last_seen'
@@ -117,10 +115,9 @@ class Event(models.Model):
     type            = models.String()
     date            = models.DateTime(default=datetime.datetime.now)
     time_spent      = models.Integer(default=0) # in ms
+    tags            = models.List()
     # XXX: possibly need to store this completely denormalized so its:
     # [(tag, value), (tag, value)]
-
-    # M2M on tags
 
     class Meta:
         ordering = 'date'

@@ -58,8 +58,8 @@ class SentryClient(object):
             date=date,
             time_spent=time_spent,
             tags=tags,
-            **data
         )
+        event.set_meta(**data)
 
         # TODO: this should be generated from the group's specified preindexes
         gr_hash = 'foo'

@@ -4,6 +4,11 @@
 
 import datetime
 
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 from sentry.db import backend
 
 def map_field_values(model, values):
@@ -68,6 +73,11 @@ class Manager(object):
                 self.add_to_index(pk, index, value)
 
         return result
+
+    def set_meta(self, pk, **values):
+        if not values:
+            return
+        backend.set_meta(self.model, pk, **map_field_values(self.model, values))
 
     def add_to_index(self, pk, index, score):
         return backend.add_to_index(self.model, pk, index, score)
@@ -145,6 +155,8 @@ class Model(object):
                 # Refs #12057.
                 val = field.get_default()
             setattr(self, attname, val)
+        if kwargs:
+            raise ValueError('%s are not part of the schema for %s' % (', '.join(kwargs.keys()), self.__class__.__name__))
 
     def __setattr__(self, key, value):
         # XXX: is this the best approach for validating attributes
@@ -171,6 +183,9 @@ class Model(object):
         self.objects.update(self.pk, **values)
         for k, v in values.iteritems():
             setattr(self, k, v)
+
+    def set_meta(self, **values):
+        self.objects.set_meta(self.pk, **values)
 
     def add_relation(self, instance, score):
         return backend.add_relation(self.__class__, self.pk, instance.__class__, instance.pk, score)
@@ -220,4 +235,15 @@ class DateTime(Field):
         if value and not isinstance(value, datetime.datetime):
             # TODO: coerce this to a UTC datetime object
             value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
+        return value
+
+class List(Field):
+    def to_db(self, value=None):
+        if isinstance(value, (tuple, list)):
+            value = pickle.dumps(value)
+        return value
+
+    def to_python(self, value=None):
+        if isinstance(value, basestring):
+            value = pickle.loads(value)
         return value
