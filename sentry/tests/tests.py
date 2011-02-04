@@ -29,6 +29,17 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(group.type, 'exception')
         self.assertEquals(group.time_spent, 53)
         self.assertEquals(group.count, 1)
+        self.assertEquals(len(group.tags), 2)
+
+        tag = group.tags[0]
+
+        self.assertEquals(tag[0], 'server')
+        self.assertEquals(tag[1], 'foo.bar')
+
+        tag = group.tags[1]
+
+        self.assertEquals(tag[0], 'view')
+        self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         events = group.get_relations(Event)
 
@@ -39,6 +50,17 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(event.time_spent, group.time_spent)
         self.assertEquals(event.type, group.type)
         self.assertEquals(event.date, group.last_seen)
+        self.assertEquals(len(event.tags), 2)
+
+        tag = event.tags[0]
+
+        self.assertEquals(tag[0], 'server')
+        self.assertEquals(tag[1], 'foo.bar')
+
+        tag = event.tags[1]
+
+        self.assertEquals(tag[0], 'view')
+        self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         group = client.create(
             type='exception',
@@ -51,6 +73,17 @@ class SentryTest(unittest2.TestCase):
 
         self.assertEquals(group.count, 2)
         self.assertEquals(group.time_spent, 153)
+        self.assertEquals(len(group.tags), 2)
+
+        tag = group.tags[0]
+
+        self.assertEquals(tag[0], 'server')
+        self.assertEquals(tag[1], 'foo.bar')
+
+        tag = group.tags[1]
+
+        self.assertEquals(tag[0], 'view')
+        self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         events = group.get_relations(Event)
 
@@ -61,6 +94,12 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(event.time_spent, 100)
         self.assertEquals(event.type, group.type)
         self.assertEquals(group.last_seen, event.date)
+        self.assertEquals(len(event.tags), 1)
+
+        tag = event.tags[0]
+
+        self.assertEquals(tag[0], 'server')
+        self.assertEquals(tag[1], 'foo.bar')
 
         tags = Tag.objects.sort_by('-count')
 
