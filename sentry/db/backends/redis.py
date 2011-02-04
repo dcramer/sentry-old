@@ -8,8 +8,6 @@ import redis
 class RedisBackend(SentryBackend):
     def __init__(self, host='localhost', port=6379, db=0):
         self.conn = redis.Redis(host, port, db)
-        # TODO: REMOVE THIS SHIT ASAP
-        self.conn.flush()
 
     ## Hash table lookups
 

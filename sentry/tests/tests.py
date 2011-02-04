@@ -1,10 +1,15 @@
 import unittest2
 import datetime
 
-from sentry.models import Event, Tag, Group
 from sentry.client import client
+from sentry.db import backend
+from sentry.models import Event, Tag, Group
 
 class SentryTest(unittest2.TestCase):
+    def setUp(self):
+        # TODO: this should change schemas, or something
+        backend.conn.flushdb()
+
     # Some quick ugly high level tests to get shit working fast
     def test_create(self):
         # redis is so blazing fast that we have to artificially inflate dates
