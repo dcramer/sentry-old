@@ -1,5 +1,7 @@
 # Inspired by Django's models
 
+import datetime
+
 from sentry.db import backend
 
 class ManagerDescriptor(object):
@@ -15,16 +17,23 @@ class Manager(object):
     def __init__(self, model):
         self.model = model
 
+    def _map(self, values):
+        for k, v in values.iteritems():
+            field = self.model._fields.get(k)
+            if field:
+                values[k] = field.to_db(v)
+        return values
+
     def get(self, pk):
         data = backend.get(self.model, pk)
-        return self.model(pk, **data)
+        return self.model(pk, **self._map(data))
 
     def create(self, **values):
-        pk = backend.add(self.model, **values)
+        pk = backend.add(self.model, **self._map(values))
         return self.model(pk, **values)
 
     def update(self, pk, **values):
-        return backend.set(self.model, pk, **values)
+        return backend.set(self.model, pk, **self._map(values))
 
     def add_to_index(self, pk, index, score):
         return backend.add_to_index(self.model, pk, index, score)
@@ -32,13 +41,13 @@ class Manager(object):
     def get_or_create(self, defaults={}, **index):
         # return (instance, created)
 
-        pk = backend.get_by_cindex(self.model, **index)
+        pk = backend.get_by_cindex(self.model, **self._map(index))
         if pk:
             return self.get(pk), False
 
         defaults.update(index)
         inst = self.create(**defaults)
-        backend.add_to_cindex(self.model, inst.pk, **index)
+        backend.add_to_cindex(self.model, inst.pk, **self._map(index))
         return inst, True
 
 class ModelDescriptor(type):
@@ -63,7 +72,7 @@ class ModelDescriptor(type):
                 fields.append((obj_name, obj))
             setattr(new_class, obj_name, obj)
 
-        setattr(new_class, '_fields', fields)
+        setattr(new_class, '_fields', dict(fields))
 
         return new_class
 
@@ -72,9 +81,9 @@ class Model(object):
 
     def __init__(self, pk=None, **kwargs):
         self.pk = pk
-        for attname, field in self._fields:
+        for attname, field in self._fields.iteritems():
             try:
-                val = kwargs.pop(attname)
+                val = field.to_python(kwargs.pop(attname))
             except KeyError:
                 # This is done with an exception rather than the
                 # default argument on pop because we don't want
@@ -82,6 +91,13 @@ class Model(object):
                 # Refs #12057.
                 val = field.get_default()
             setattr(self, attname, val)
+
+    def __setattr__(self, key, value):
+        # XXX: is this the best approach for validating attributes
+        field = self._fields.get(key)
+        if field:
+            value = field.to_python(value)
+        object.__setattr__(self, key, value)
 
     def incr(self, key, amount=1):
         result = backend.incr(self.__class__, self.pk, key, amount)
@@ -112,25 +128,35 @@ class Field(object):
             value = self.default
         return value
 
-    def save(self, value=None):
-        if not value:
-            value= self.get_default()
+    def to_db(self, value=None):
         return value
 
     def to_python(self, value=None):
         return value
 
 class String(Field):
-    def save(self, value=None):
-        return unicode(super(Integer, self).save(value))
+    def to_python(self, value=None):
+        if value:
+            value = unicode(value)
+        return value
 
 class Integer(Field):
-    def save(self, value=None):
-        return int(super(Integer, self).save(value))
+    def to_python(self, value=None):
+        if value:
+            value = int(value)
+        return value
 
 class DateTime(Field):
-    def save(self, value=None):
-        # XXX: coerce to UTC
-        value = super(Integer, self).save(value)
-        assert isinstance(value, datetime)
-        return value.strftime('%s')
+    def to_db(self, value=None):
+        if value:
+            # TODO: coerce this to UTC
+            value = value.strftime('%s')
+        return value
+
+    def to_python(self, value=None):
+        if value:
+            if not isinstance(value, datetime.datetime):
+                # TODO: coerce this to a UTC datetime object
+                value = datetime.datetime.fromtimestamp(float(int(value)))
+            value = value.replace(microsecond=0)
+        return value
