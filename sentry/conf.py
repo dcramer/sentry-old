@@ -70,3 +70,18 @@ INCLUDE_PATHS = config.get('INCLUDE_PATHS', [])
 
 # Absolute URL to the sentry root directory. Should not include a trailing slash.
 URL_PREFIX = config.get('URL_PREFIX', None)
+
+VIEWS = config.get('VIEWS', {
+    'errors': {
+        'name': 'Exceptions',
+        'event': 'sentry.events.ExceptionEvent',
+    },
+    'messages': {
+        'name': 'Messages',
+        'event': 'sentry.events.MessageEvent',
+    },
+    'sql': {
+        'name': 'SQL',
+        'event': 'sentry.events.QueryEvent',
+    },
+})

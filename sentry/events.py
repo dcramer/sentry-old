@@ -1,29 +1,8 @@
 import datetime
 import hashlib
 
+from sentry import conf
 from sentry.models import TagCount, Tag, Group, Event
-
-VIEWS = {
-    'errors': {
-        'name': 'Exceptions',
-        'event': 'sentry.events.ExceptionEvent',
-        # 'notifiers': ...
-    },
-    'errors.urls': {
-        'name': 'Exceptions (by URL)',
-        'event': 'sentry.events.ExceptionEvent',
-        'tags': ['url'],
-    },
-    'messages': {
-        'name': 'Messages',
-        'event': 'sentry.events.MessageEvent',
-    },
-    'queries': {
-        'name': 'Queries (by Function)',
-        'event': 'sentry.events.QueryEvent',
-        'tags': ['func'],
-    },
-}
 
 class BaseEvent(object):
     def get_id(self):
@@ -68,7 +47,7 @@ class BaseEvent(object):
         groups = []
 
         # For each view that handles this event, we need to create a Group
-        for view in VIEWS.itervalues():
+        for view in conf.VIEWS.itervalues():
             if view['event'] == event_id:
                 # We only care about tags which are required for this view
 
