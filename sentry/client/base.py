@@ -1,8 +1,3 @@
-import base64
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 import datetime
 import logging
 import sys
@@ -127,10 +122,10 @@ class SentryClient(object):
                 try:
                     urlread(url, post=data, timeout=conf.REMOTE_TIMEOUT)
                 except urllib2.URLError, e:
-                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=sys.exc_info(), extra={'remote_url': url})
+                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=True, extra={'remote_url': url})
                     self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
                 except urllib2.HTTPError, e:
-                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=sys.exc_info(), extra={'body': e.read(), 'remote_url': url})
+                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=True, extra={'body': e.read(), 'remote_url': url})
                     self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
         else:
             return self.create(**kwargs)
