@@ -1,17 +1,23 @@
 import unittest2
+import datetime
 
-from sentry.models import Event
+from sentry.models import Event, Tag, Group
 from sentry.client import client
 
 class SentryTest(unittest2.TestCase):
     # Some quick ugly high level tests to get shit working fast
     def test_create(self):
+        # redis is so blazing fast that we have to artificially inflate dates
+        # or tests wont pass :)
+        now = datetime.datetime.now()
+
         group = client.create(
             type='exception',
             tags=(
                 ('server', 'foo.bar'),
                 ('view', 'foo.bar.zoo.baz'),
             ),
+            date=now,
             time_spent=53,
         )
         self.assertTrue(group.pk)
@@ -33,8 +39,8 @@ class SentryTest(unittest2.TestCase):
             type='exception',
             tags=(
                 ('server', 'foo.bar'),
-                ('view', 'foo.bar.zoo.baz'),
             ),
+            date=now + datetime.timedelta(seconds=1),
             time_spent=100,
         )
 
@@ -50,3 +56,19 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(event.time_spent, 100)
         self.assertEquals(event.type, group.type)
         self.assertEquals(group.last_seen, event.date)
+
+        tags = Tag.objects.sort_by('-count')
+
+        self.assertEquals(len(tags), 2)
+
+        tag = tags[0]
+
+        self.assertEquals(tag.key, 'server')
+        self.assertEquals(tag.value, 'foo.bar')
+        self.assertEquals(tag.count, 2)
+
+        tag = tags[1]
+
+        self.assertEquals(tag.key, 'view')
+        self.assertEquals(tag.value, 'foo.bar.zoo.baz')
+        self.assertEquals(tag.count, 1)

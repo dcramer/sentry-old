@@ -1,5 +1,7 @@
 # Inspired by Django's models
 
+# TODO: make "default" indexing configurable via a param
+
 import datetime
 
 from sentry.db import backend
@@ -7,7 +9,7 @@ from sentry.db import backend
 def map_field_values(model, values):
     result = {}
     for k, v in values.iteritems():
-        field = model._fields.get(k)
+        field = model._meta.fields.get(k)
         if field:
             v = field.to_db(v)
         result[k] = v
@@ -26,16 +28,46 @@ class Manager(object):
     def __init__(self, model):
         self.model = model
 
+    def all(self, offset=0, limit=100):
+        return self.sort_by('default', offset, limit)
+
+    def sort_by(self, index, offset=0, limit=100):
+        if index.startswith('-'):
+            desc = True
+            index = index[1:]
+        else:
+            desc = False
+        return [self.model(pk, **data) for pk, data in backend.list(self.model, index, offset, limit, desc)]
+
     def get(self, pk):
         data = backend.get(self.model, pk)
         return self.model(pk, **data)
 
     def create(self, **values):
         pk = backend.add(self.model, **map_field_values(self.model, values))
-        return self.model(pk, **values)
+        instance = self.model(pk, **values)
+
+        for index in self.model._meta.indexes:
+            if index in values:
+                value = getattr(instance, index)
+                self.add_to_index(pk, index, value)
+
+        ordering = self.model._meta.ordering
+        if ordering == '__default__':
+            value = datetime.datetime.now()
+            self.add_to_index(pk, 'default', value)
+
+        return instance
 
     def update(self, pk, **values):
-        return backend.set(self.model, pk, **map_field_values(self.model, values))
+        result = backend.set(self.model, pk, **map_field_values(self.model, values))
+
+        for index in self.model._meta.indexes:
+            if index in values:
+                value = values[index]
+                self.add_to_index(pk, index, value)
+
+        return result
 
     def add_to_index(self, pk, index, score):
         return backend.add_to_index(self.model, pk, index, score)
@@ -56,6 +88,22 @@ class Manager(object):
 
         return inst, True
 
+class Options(object):
+    def __init__(self, meta, attrs):
+        # Grab fields
+        fields = []
+        for obj_name, obj in attrs.iteritems():
+            if isinstance(obj, Field):
+                fields.append((obj_name, obj))
+
+        self.fields = dict(fields)
+
+        default_order = meta.__dict__.get('ordering')
+        self.ordering = default_order or '__default__'
+        self.indexes = list(meta.__dict__.get('indexes', []))
+        if default_order:
+            self.indexes.append(default_order)
+
 class ModelDescriptor(type):
     def __new__(cls, name, bases, attrs):
         super_new = super(ModelDescriptor, cls).__new__
@@ -66,19 +114,19 @@ class ModelDescriptor(type):
 
         module = attrs.pop('__module__')
         new_class = super_new(cls, name, bases, {'__module__': module})
+        attr_meta = attrs.pop('Meta', None)
+        if not attr_meta:
+            meta = getattr(new_class, 'Meta', None)
+        else:
+            meta = attr_meta
+        setattr(new_class, '_meta', Options(meta, attrs))
 
         # Setup default manager
         setattr(new_class, 'objects', Manager(new_class))
 
-        fields = []
-
         # Add all attributes to the class.
         for obj_name, obj in attrs.iteritems():
-            if isinstance(obj, Field):
-                fields.append((obj_name, obj))
             setattr(new_class, obj_name, obj)
-
-        setattr(new_class, '_fields', dict(fields))
 
         return new_class
 
@@ -87,7 +135,7 @@ class Model(object):
 
     def __init__(self, pk=None, **kwargs):
         self.pk = pk
-        for attname, field in self._fields.iteritems():
+        for attname, field in self._meta.fields.iteritems():
             try:
                 val = field.to_python(kwargs.pop(attname))
             except KeyError:
@@ -100,10 +148,19 @@ class Model(object):
 
     def __setattr__(self, key, value):
         # XXX: is this the best approach for validating attributes
-        field = self._fields.get(key)
+        field = self._meta.fields.get(key)
         if field:
             value = field.to_python(value)
         object.__setattr__(self, key, value)
+
+    def __repr__(self):
+        return u'<%s: %s>' % (self.__class__.__name__, unicode(self))
+
+    def __str__(self):
+        return unicode(self.__str__)
+
+    def __unicode__(self):
+        return self.pk
 
     def incr(self, key, amount=1):
         result = backend.incr(self.__class__, self.pk, key, amount)
@@ -156,13 +213,11 @@ class DateTime(Field):
     def to_db(self, value=None):
         if isinstance(value, datetime.datetime):
             # TODO: coerce this to UTC
-            value = value.strftime('%s')
+            value = value.isoformat()
         return value
 
     def to_python(self, value=None):
-        if value:
-            if not isinstance(value, datetime.datetime):
-                # TODO: coerce this to a UTC datetime object
-                value = datetime.datetime.fromtimestamp(int(value))
-            value = value.replace(microsecond=0)
+        if value and not isinstance(value, datetime.datetime):
+            # TODO: coerce this to a UTC datetime object
+            value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
         return value

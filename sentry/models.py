@@ -46,10 +46,10 @@ class Tag(models.Model):
     count           = models.Integer(default=0)
 
     class Meta:
-        unique_together = (('key', 'hash'),)
+        ordering = 'count'
 
     def __unicode__(self):
-        return u"%s=%s" % (self.tag, self.value)
+        return u"%s=%s; count=%s" % (self.key, self.value, self.count)
 
     def save(self, *args, **kwargs):
         if not self.hash:
@@ -66,6 +66,9 @@ class TagCount(models.Model):
     count           = models.Integer(default=0)
 
     # M2M on tags
+
+    class Meta:
+        ordering = 'count'
 
     @classmethod
     def get_tags_hash(cls, tags):
@@ -93,6 +96,10 @@ class Group(models.Model):
 
     # M2M on tags
 
+    class Meta:
+        ordering = 'last_seen'
+        indexes = ('time_spent', 'first_seen', 'last_seen')
+
     def save(self, *args, **kwargs):
         self.score = math.log(self.count) * 600 + int(self.last_seen)
         super(Group, self).save(*args, **kwargs)
@@ -116,7 +123,7 @@ class Event(models.Model):
     # M2M on tags
 
     class Meta:
-        unique_together = (('hash', 'type'),)
+        ordering = 'date'
 
     def save(self, *args, **kwargs):
         if not self.hash:

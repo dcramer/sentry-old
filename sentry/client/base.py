@@ -25,20 +25,22 @@ class SentryClient(object):
     def create(self, type, tags, data={}, date=None, time_spent=None):
         from sentry.models import Event, Group, Tag, TagCount
 
-        current_datetime = datetime.datetime.now()
-
         if not date:
-            date = current_datetime
+            date = datetime.datetime.now()
 
         # Grab our tags for this event
-        tags = []
         for k, v in tags:
             # XXX: this should be cached
-            tag, created = Tag.objects.get_or_create(key=k, value=v)
-            tags.append(tag)
+            tag, created = Tag.objects.get_or_create(
+                key=k,
+                value=v,
+                defaults={
+                    'count': 1,
+                })
             # Maintain counts
             if not created:
-                Tag.objects.filter(pk=tag.pk).update(count=F('count') + 1)
+                tag.incr('count')
+            Tag.objects.add_to_index(tag.pk, 'count', int(tag.count))
 
         # Handle TagCount creation and incrementing
         tc, created = TagCount.objects.get_or_create(
@@ -55,7 +57,6 @@ class SentryClient(object):
 
         # TODO: this should be generated from the TypeProcessor
         ev_hash = 'foo'
-
         event = Event.objects.create(
             type=type,
             hash=ev_hash,
@@ -65,9 +66,11 @@ class SentryClient(object):
             **data
         )
 
+        # TODO: this should be generated from the group's specified preindexes
+        gr_hash = 'foo'
         group, created = Group.objects.get_or_create(
             type=type,
-            hash=tc.hash + event.hash,
+            hash=gr_hash + ev_hash,
             defaults={
                 'count': 1,
                 'time_spent': time_spent,
@@ -78,12 +81,12 @@ class SentryClient(object):
             group.incr('count')
             if time_spent:
                 group.incr('time_spent', time_spent)
-        group.update(last_seen=current_datetime)
+        group.update(last_seen=event.date)
 
-        group.add_relation(event, date.strftime('%s'))
+        group.add_relation(event, date.strftime('%s.%m'))
 
         # TODO: This logic should be some kind of "on-field-change" hook
-        backend.add_to_index(Group, group.pk, 'last_seen', group.last_seen.strftime('%s'))
+        backend.add_to_index(Group, group.pk, 'last_seen', group.last_seen.strftime('%s.%m'))
         backend.add_to_index(Group, group.pk, 'time_spent', group.time_spent)
         backend.add_to_index(Group, group.pk, 'count', group.count)
 
