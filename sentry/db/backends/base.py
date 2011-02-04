@@ -1,20 +1,12 @@
-class SQLAlchemyBackend(object):
-    # TODO: this would use sql alchemy syntax
+import hashlib
+import uuid
 
-    def incr(self, schema, lookup, key='count', amount=1):
-        inst, created = schema.objects.get_or_create(lookup)
-        # Maintain counts
-        if not created:
-            inst.count += 1
-            schema.objects.filter(pk=inst.pk).update(**{key: F(key) + amount})
-        return inst.count
+class SentryBackend(object):
+    def _get_schema_name(self, schema):
+        return schema.__name__.lower()
 
-    def add(self, schema, lookup, **values):
-        inst, created = schema.objects.get_or_create(lookup, defaults=values)
-        return created
+    def _get_composite_key(self, *keys):
+        return hashlib.md5('_'.join(keys)).hexdigest()
 
-    def set(self, schema, lookup, **values):
-        inst, created = schema.objects.get_or_create(lookup, defaults=values)
-        if not created:
-            schema.objects.filter(pk=inst.pk).update(values)
-        return True
+    def generate_key(self, schema):
+        return uuid.uuid4().hex

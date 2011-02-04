@@ -3,10 +3,8 @@ import django
 import logging
 import warnings
 
-from django.db import models
-from django.db.models import signals
-
 from sentry import conf
+from sentry.db import models
 from sentry.helpers import construct_checksum
 
 assert not conf.DATABASE_USING or django.VERSION >= (1, 2), 'The `SENTRY_DATABASE_USING` setting requires Django >= 1.2'
@@ -14,19 +12,11 @@ assert not conf.DATABASE_USING or django.VERSION >= (1, 2), 'The `SENTRY_DATABAS
 logger = logging.getLogger('sentry.errors')
 
 class SentryManager(models.Manager):
-    use_for_related_fields = True
-
-    def get_query_set(self):
-        qs = super(SentryManager, self).get_query_set()
-        if conf.DATABASE_USING:
-            qs = qs.using(conf.DATABASE_USING)
-        return qs
-
     def from_kwargs(self, type, tags, data=None, date=None, time_spent=None):
         from sentry.models import Event, Group, Tag, TagCount
-        
+
         current_datetime = datetime.datetime.now()
-        
+
         # Grab our tags for this event
         tags = []
         for k, v in sorted(kwargs.pop('tags', {}).items(), key=lambda x: x[0]):
@@ -38,52 +28,30 @@ class SentryManager(models.Manager):
                 Tag.objects.filter(pk=tag.pk).update(count=F('count') + 1)
 
         # Handle TagCount creation and incrementing
-        tc, created = TagCount.objects.get_or_create(
-            hash=TagCount.get_tags_hash(tags),
-        )
-        if created:
-            tc.tags = tags
-        else:
-            TagCount.objects.filter(pk=tc.pk).update(count=F('count') + 1)
+        tc = TagCount.objects.get(TagCount.get_tags_hash(tags))
+        if tc.count == 0:
+            tc.update(tags=tags)
+            tc.incr(count)
 
         event = Event.objects.create(
             type=type,
-            data=data,
             date=date,
+            time_spent=time_spent,
+            tags=tags,
+            **data
         )
-        event.tags = tags
 
-        # now for each processor that handles this event we need to create a group
-        mail = False
-        
-        group, created = Group.objects.get_or_create(
-            type=type,
-            hash=tc.hash + event.hash,
-            defaults=dict(
-            )
-        )
-        if not created:
-            Group.objects.filter(pk=group.pk).update(
-                status=0,
-                count=F('count') + 1,
-                time_spent=F('time_spent') + (time_spent or 0),
-                last_seen=current-datetime,
-            )
-        else:
-            group.tags = tags
-            mail = True
+        group = Group.objects.get_or_create('%s:%s:%s' % (type, tc.hash, event.hash))
+        group.incr('count')
+        if time_spent:
+            group.incr('time_spent', time_spent)
+        group.update(last_seen=current_datetime, tags=tags)
 
-        # except Exception, exc:
-        #     # TODO: we should mail admins when there are failures
-        #     try:
-        #         logger.exception(u'Unable to process log entry: %s' % (exc,))
-        #     except Exception, exc:
-        #         warnings.warn(u'Unable to process log entry: %s' % (exc,))
-        # else:
-        if mail:
-            group.mail_admins()
-        return instance
+        group.add_relation(event, date)
 
-class GroupedMessageManager(SentryManager):
-    def get_by_natural_key(self, logger, view, checksum):
-        return self.get(logger=logger, view=view, checksum=checksum)
+        # TODO: This logic should be some kind of "on-field-change" hook
+        backend.index(Group, group.pk, 'date', group.date)
+        backend.index(Group, group.pk, 'time_spent', group.time_spent)
+        backend.index(Group, group.pk, 'count', group.count)
+
+        return group

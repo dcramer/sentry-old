@@ -10,15 +10,6 @@ from sentry import conf
 
 logger = logging.getLogger('sentry.errors')
 
-_client = (None, None)
-def get_client():
-    global _client
-    if _client[0] != conf.CLIENT:
-        module, class_name = conf.CLIENT.rsplit('.', 1)
-        _client = (conf.CLIENT, getattr(__import__(module, {}, {}, class_name), class_name)())
-    return _client[1]
-client = get_client()
-
 @transaction.commit_on_success
 def sentry_exception_handler(request=None, **kwargs):
     try:
@@ -44,7 +35,7 @@ def sentry_exception_handler(request=None, **kwargs):
             url=request and request.build_absolute_uri() or None,
             data=data,
         )
-        
+
         client = get_client()
         client.create_from_exception(**extra)
     except Exception, exc:

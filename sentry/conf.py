@@ -1,22 +1,19 @@
 from django.conf import settings
-from django.utils.hashcompat import md5_constructor
-from django.utils.translation import ugettext_lazy as _
 
+import hashlib
 import logging
 import socket
 import warnings
 
+config = getattr(settings, 'SENTRY_CONFIG', {})
+
 # Allow local testing of Sentry even if DEBUG is enabled
-DEBUG = getattr(settings, 'DEBUG', False) and not getattr(settings, 'SENTRY_TESTING', False)
+DEBUG = getattr(settings, 'DEBUG', False) and not config.get('DEBUG', False)
 
-DATABASE_USING = getattr(settings, 'SENTRY_DATABASE_USING', None)
-if DATABASE_USING:
-    warnings.warn('`SENTRY_DATABASE_USING` will be removed in a near-future version.', DeprecationWarning)
+THRASHING_TIMEOUT = config.get('THRASHING_TIMEOUT', 60)
+THRASHING_LIMIT = config.get('THRASHING_LIMIT', 10)
 
-THRASHING_TIMEOUT = getattr(settings, 'SENTRY_THRASHING_TIMEOUT', 60)
-THRASHING_LIMIT = getattr(settings, 'SENTRY_THRASHING_LIMIT', 10)
-
-FILTERS = getattr(settings, 'SENTRY_FILTERS', (
+FILTERS = config.get('FILTERS', (
     'sentry.filters.StatusFilter',
     'sentry.filters.LoggerFilter',
     'sentry.filters.LevelFilter',
@@ -24,58 +21,52 @@ FILTERS = getattr(settings, 'SENTRY_FILTERS', (
     'sentry.filters.SiteFilter',
 ))
 
-KEY = getattr(settings, 'SENTRY_KEY', md5_constructor(settings.SECRET_KEY).hexdigest())
+KEY = config.get('KEY', hashlib.md5(settings.SECRET_KEY).hexdigest())
 
 LOG_LEVELS = (
-    (logging.DEBUG, _('debug')),
-    (logging.INFO, _('info')),
-    (logging.WARNING, _('warning')),
-    (logging.ERROR, _('error')),
-    (logging.FATAL, _('fatal')),
+    (logging.DEBUG, 'debug'),
+    (logging.INFO, 'info'),
+    (logging.WARNING, 'warning'),
+    (logging.ERROR, 'error'),
+    (logging.FATAL, 'fatal'),
 )
 
 # This should be the full URL to sentries store view
-REMOTE_URL = getattr(settings, 'SENTRY_REMOTE_URL', None)
+# XXX: REMOTE_* should be passed as a setting to the client not a global
+REMOTE_URL = config.get('REMOTE_URL', None)
 
 if REMOTE_URL:
     if isinstance(REMOTE_URL, basestring):
         REMOTE_URL = [REMOTE_URL]
     elif not isinstance(REMOTE_URL, (list, tuple)):
-        raise ValueError("SENTRY_REMOTE_URL must be of type list.")
+        raise ValueError("Sentry::REMOTE_URL must be of type list.")
 
-REMOTE_TIMEOUT = getattr(settings, 'SENTRY_REMOTE_TIMEOUT', 5)
+REMOTE_TIMEOUT = config.get('REMOTE_TIMEOUT', 5)
 
-ADMINS = getattr(settings, 'SENTRY_ADMINS', [])
+# XXX: this should be configured by a notifications backend
+ADMINS = config.get('ADMINS', [])
 
-# TODO: deprecate this
-USE_LOGGING = getattr(settings, 'SENTRY_USE_LOGGING', False)
+CLIENT = config.get('CLIENT', 'sentry.client.base.SentryClient')
 
-if USE_LOGGING:
-    default_client = 'sentry.client.log.LoggingSentryClient'
-else:
-    default_client = 'sentry.client.base.SentryClient'
+BACKEND = config.get('BACKEND', {
+    'ENGINE': 'sentry.db.backends.redis.RedisBackend',
+})
 
-CLIENT = getattr(settings, 'SENTRY_CLIENT', default_client)
-
-NAME = getattr(settings, 'SENTRY_NAME', socket.gethostname())
+NAME = config.get('NAME', socket.gethostname())
 
 # We allow setting the site name either by explicitly setting it with the
 # SENTRY_SITE setting, or using the django.contrib.sites framework for
 # fetching the current site. Since we can't reliably query the database
 # from this module, the specific logic is within the SiteFilter
-SITE = getattr(settings, 'SENTRY_SITE', None)
+SITE = config.get('SITE', None)
 
 # Extending this allow you to ignore module prefixes when we attempt to
 # discover which function an error comes from (typically a view)
-EXCLUDE_PATHS = getattr(settings, 'SENTRY_EXCLUDE_PATHS', [])
+EXCLUDE_PATHS = config.get('EXCLUDE_PATHS', [])
 
 # By default Sentry only looks at modules in INSTALLED_APPS for drilling down
 # where an exception is located
-INCLUDE_PATHS = getattr(settings, 'SENTRY_INCLUDE_PATHS', [])
+INCLUDE_PATHS = config.get('INCLUDE_PATHS', [])
 
 # Absolute URL to the sentry root directory. Should not include a trailing slash.
-URL_PREFIX = getattr(settings, 'SENTRY_URL_PREFIX', None)
-
-# Allow access to Sentry without authentication.
-PUBLIC = getattr(settings, 'SENTRY_PUBLIC', False)
-PUBLIC
+URL_PREFIX = config.get('URL_PREFIX', None)

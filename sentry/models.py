@@ -8,15 +8,15 @@ try:
 except ImportError:
     import math
 import datetime
+import hashlib
 import logging
 import sys
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import models, transaction
-from django.utils.translation import ugettext_lazy as _
 
 from sentry import conf
+from sentry.db import models, backend
 from sentry.helpers import cached_property, construct_checksum, get_db_engine, transform, get_filters
 from sentry.reporter import FakeRequest
 
@@ -35,119 +35,86 @@ except ImportError:
 
 __all__ = ('Message', 'GroupedMessage')
 
-STATE_CHOICES = (
-    (0, _('unresolved')),
-    (1, _('resolved')),
-)
-
-class GzippedDictField(models.TextField):
-    """
-    Slightly different from a JSONField in the sense that the default
-    value is a dictionary.
-    """
-    __metaclass__ = models.SubfieldBase
- 
-    def to_python(self, value):
-        if isinstance(value, basestring) and value:
-            value = pickle.loads(base64.b64decode(value).decode('zlib'))
-        elif not value:
-            return {}
-        return value
-
-    def get_prep_value(self, value):
-        if value is None: return
-        return base64.b64encode(pickle.dumps(transform(value)).encode('zlib'))
- 
-    def value_to_string(self, obj):
-        value = self._get_val_from_obj(obj)
-        return self.get_db_prep_value(value)
-
-    def south_field_triple(self):
-        "Returns a suitable description of this field for South."
-        from south.modelsinspector import introspector
-        field_class = "django.db.models.fields.TextField"
-        args, kwargs = introspector(self)
-        return (field_class, args, kwargs)
-
 class Tag(models.Model):
     """
     Stores a unique value of a tag.
     """
-    
-    key             = models.CharField(max_length=16)
-    hash            = models.CharField(max_length=32)
-    value           = models.CharField()
-    count           = models.PositiveIntegerField(default=0)
-    
+
+    key             = models.String() # length 16?
+    hash            = models.String() # length 32
+    value           = models.String()
+    count           = models.Integer(default=0)
+
     class Meta:
         unique_together = (('key', 'hash'),)
-    
+
     def __unicode__(self):
         return u"%s=%s" % (self.tag, self.value)
-    
+
     def save(self, *args, **kwargs):
         if not self.hash:
             self.hash = hashlib.md5(self.value).hexdigest()
         super(Tag, self).save(*args, **kwargs)
-    
+
 class TagCount(models.Model):
     """
     Stores the total number of events recorded for a combination of tags.
     """
-    
+
     # this is md5(' '.join(tags))
-    hash            = models.CharField(max_length=32, unique=True)
-    tag             = models.ManyToManyField(Tag)
-    count           = models.PositiveIntegerField(default=0)
+    hash            = models.String() # length 32
+    count           = models.Integer(default=0)
+
+    # M2M on tags
 
     @classmethod
     def get_tags_hash(cls, tags):
-        return hashlib.md5(' '.join('='.join(t) for t in tags))
+        return hashlib.md5(' '.join('='.join(t) for t in tags)).hexdigest()
 
 class Group(models.Model):
     """
     Stores an aggregate (summary) of Event's for a combination of tags.
     """
 
+    # key is (type, hash)
+
     # this is the combination of md5(' '.join(tags)) + md5(event)
-    type            = models.CharField(max_length=32)
-    hash            = models.CharField(max_length=64)
+    type            = models.String() # length 32
+    hash            = models.String() # length 64
     # one line summary used for rendering
-    message         = models.TextField(null=True)
-    state           = models.PositiveIntegerField(default=0, choices=STATE_CHOICES, db_index=True)
-    count           = models.PositiveIntegerField(default=0)
-    time_spent      = models.FloatField(default=0.0)
-    first_seen      = models.DateTimeField(default=datetime.datetime.now)
-    last_seen       = models.DateTimeField(default=datetime.datetime.now)
-    # XXX: why did I add this?
-    # score           = models.FloatField(default=0.0, db_index=True)
-    tags            = models.ManyToManyField(Tag)
-    
-    class Meta:
-        unique_together = (('hash', 'type'),)
-    
+    message         = models.String()
+    state           = models.Integer(default=0)
+    count           = models.Integer(default=0)
+    time_spent      = models.Integer(default=0)
+    first_seen      = models.DateTime(default=datetime.datetime.now)
+    last_seen       = models.DateTime(default=datetime.datetime.now)
+    # This is a meta element which needs magically created or something
+    # score           = models.Float(default=0.0)
+
+    # M2M on tags
+
     def save(self, *args, **kwargs):
         self.score = math.log(self.count) * 600 + int(self.last_seen)
         super(Group, self).save(*args, **kwargs)
-
-    @models.permalink
-    def get_absolute_url(self):
-        return ('sentry-group', (self.pk,), {})
 
 class Event(models.Model):
     """
     An individual event. It's processor (type) handles input and output, as well as
     group summarization.
+
+    Any field that isnt declared is assumed a text type.
     """
-    
+
     # the hash of this event is defined by its processor (type)
-    hash            = models.CharField(max_length=32)
-    type            = models.CharField(max_length=32)
-    date            = models.DateTimeField(default=datetime.datetime.now)
+    hash            = models.String()
+    type            = models.String()
+    date            = models.DateTime(default=datetime.datetime.now)
+    time_spent      = models.Integer(default=0) # in ms
     # XXX: possibly need to store this completely denormalized so its:
     # [(tag, value), (tag, value)]
-    tags            = models.ManyToManyField(Tag)
-    
+
+    # M2M on tags
+
     class Meta:
         unique_together = (('hash', 'type'),)
 
@@ -159,7 +126,7 @@ class Event(models.Model):
     def mail_admins(self, request=None, fail_silently=True):
         if not conf.ADMINS:
             return
-        
+
         from django.core.mail import send_mail
         from django.template.loader import render_to_string
 
@@ -187,27 +154,15 @@ class Event(models.Model):
             'traceback': message.traceback,
             'link': link,
         })
-        
+
         send_mail(subject, body,
                   settings.SERVER_EMAIL, conf.ADMINS,
                   fail_silently=fail_silently)
 
-class EventMeta(models.Model):
-    """
-    To maintain compatibility with SQL and Key/Value stores we need to
-    store additional values as one key per event.
-    """
-    event           = models.OneToOneField(Event)
-    key             = models.CharField(max_length=32)
-    value           = models.TextField()
-    
-    class Meta:
-        unique_together = (('event', 'key'),)
-
 class RequestEvent(object):
     def __init__(self, data):
         self.data = data
-    
+
     @cached_property
     def request(self):
         fake_request = FakeRequest()

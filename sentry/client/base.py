@@ -3,6 +3,7 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
+import datetime
 import logging
 import sys
 import traceback
@@ -13,11 +14,81 @@ from django.template import TemplateSyntaxError
 from django.views.debug import ExceptionReporter
 
 from sentry import conf
+from sentry.db import backend
+from sentry.models import Event, Group, Tag, TagCount
 from sentry.helpers import construct_checksum, varmap, transform, get_installed_apps, urlread, force_unicode
 
-logger = logging.getLogger('sentry.errors')
-
 class SentryClient(object):
+    def __init__(self, *args, **kwargs):
+        self.logger = logging.getLogger('sentry.errors')
+
+    def create(self, type, tags, data={}, date=None, time_spent=None):
+        from sentry.models import Event, Group, Tag, TagCount
+
+        current_datetime = datetime.datetime.now()
+
+        if not date:
+            date = current_datetime
+
+        # Grab our tags for this event
+        tags = []
+        for k, v in tags:
+            # XXX: this should be cached
+            tag, created = Tag.objects.get_or_create(key=k, value=v)
+            tags.append(tag)
+            # Maintain counts
+            if not created:
+                Tag.objects.filter(pk=tag.pk).update(count=F('count') + 1)
+
+        # Handle TagCount creation and incrementing
+        tc, created = TagCount.objects.get_or_create(
+            hash=TagCount.get_tags_hash(tags),
+            defaults={
+                'tags': tags,
+                'count': 1,
+            }
+        )
+        if not created:
+            tc.incr('count')
+
+        # XXX: We need some special handling for "data" as it shouldnt be part of the main hash??
+
+        # TODO: this should be generated from the TypeProcessor
+        ev_hash = 'foo'
+
+        event = Event.objects.create(
+            type=type,
+            hash=ev_hash,
+            date=date,
+            time_spent=time_spent,
+            tags=tags,
+            **data
+        )
+
+        group, created = Group.objects.get_or_create(
+            type=type,
+            hash=tc.hash + event.hash,
+            defaults={
+                'count': 1,
+                'time_spent': time_spent,
+                'tags': tags,
+            }
+        )
+        if not created:
+            group.incr('count')
+            if time_spent:
+                group.incr('time_spent', time_spent)
+        group.update(last_seen=current_datetime)
+
+        group.add_relation(event, date.strftime('%s'))
+
+        # TODO: This logic should be some kind of "on-field-change" hook
+        backend.add_to_index(Group, group.pk, 'last_seen', group.last_seen.strftime('%s'))
+        backend.add_to_index(Group, group.pk, 'time_spent', group.time_spent)
+        backend.add_to_index(Group, group.pk, 'count', group.count)
+
+        return group
+
     def process(self, **kwargs):
         from sentry.helpers import get_filters
 
@@ -29,6 +100,7 @@ class SentryClient(object):
         else:
             checksum = kwargs['checksum']
 
+        # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
         if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
             cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
             added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
@@ -40,7 +112,7 @@ class SentryClient(object):
 
         for filter_ in get_filters():
             kwargs = filter_(None).process(kwargs) or kwargs
-        
+
         # Make sure all additional data is coerced
         if 'data' in kwargs:
             kwargs['data'] = transform(kwargs['data'])
@@ -57,15 +129,13 @@ class SentryClient(object):
                 try:
                     urlread(url, post=data, timeout=conf.REMOTE_TIMEOUT)
                 except urllib2.URLError, e:
-                    logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=sys.exc_info(), extra={'remote_url': url})
-                    logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
+                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=sys.exc_info(), extra={'remote_url': url})
+                    self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
                 except urllib2.HTTPError, e:
-                    logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=sys.exc_info(), extra={'body': e.read(), 'remote_url': url})
-                    logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
+                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=sys.exc_info(), extra={'body': e.read(), 'remote_url': url})
+                    self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
         else:
-            from sentry.models import GroupedMessage
-            
-            return GroupedMessage.objects.from_kwargs(**kwargs)
+            return self.create(**kwargs)
 
     def create_from_record(self, record, **kwargs):
         """
@@ -74,7 +144,7 @@ class SentryClient(object):
         for k in ('url', 'view', 'data'):
             if k not in kwargs:
                 kwargs[k] = record.__dict__.get(k)
-        
+
         request = getattr(record, 'request', None)
         if request:
             if not kwargs.get('data'):
@@ -88,20 +158,20 @@ class SentryClient(object):
 
             if not kwargs.get('url'):
                 kwargs['url'] = request.build_absolute_uri()
-        
+
         kwargs.update({
             'logger': record.name,
             'level': record.levelno,
             'message': force_unicode(record.msg),
             'server_name': conf.NAME,
         })
-        
+
         # construct the checksum with the unparsed message
         kwargs['checksum'] = construct_checksum(**kwargs)
-        
+
         # save the message with included formatting
         kwargs['message'] = record.getMessage()
-        
+
         # If there's no exception being processed, exc_info may be a 3-tuple of None
         # http://docs.python.org/library/sys.html#sys.exc_info
         if record.exc_info and all(record.exc_info):
@@ -149,13 +219,13 @@ class SentryClient(object):
                 while tb:
                     yield tb.tb_frame
                     tb = tb.tb_next
-            
+
             def contains(iterator, value):
                 for k in iterator:
                     if value.startswith(k):
                         return True
                 return False
-                
+
             # We iterate through each frame looking for an app in INSTALLED_APPS
             # When one is found, we mark it as last "best guess" (best_guess) and then
             # check it against SENTRY_EXCLUDE_PATHS. If it isnt listed, then we
@@ -171,7 +241,7 @@ class SentryClient(object):
                     break
             if best_guess:
                 view = best_guess
-            
+
             if view:
                 kwargs['view'] = view
 
@@ -186,7 +256,7 @@ class SentryClient(object):
                 'template': (origin.reload(), start, end, origin.name),
             })
             kwargs['view'] = origin.loadname
-        
+
         tb_message = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
 
         kwargs.setdefault('message', transform(force_unicode(exc_value)))
