@@ -29,7 +29,7 @@ class Manager(object):
         self.model = model
 
     def all(self, offset=0, limit=100):
-        return self.sort_by('default', offset, limit)
+        return self.sort_by(self.model._meta.ordering, offset, limit)
 
     def sort_by(self, index, offset=0, limit=100):
         if index.startswith('-'):
@@ -53,7 +53,7 @@ class Manager(object):
                 self.add_to_index(pk, index, value)
 
         ordering = self.model._meta.ordering
-        if ordering == '__default__':
+        if ordering == 'default':
             value = datetime.datetime.now()
             self.add_to_index(pk, 'default', value)
 
@@ -99,7 +99,7 @@ class Options(object):
         self.fields = dict(fields)
 
         default_order = meta.__dict__.get('ordering')
-        self.ordering = default_order or '__default__'
+        self.ordering = default_order or 'default'
         self.indexes = list(meta.__dict__.get('indexes', []))
         if default_order:
             self.indexes.append(default_order)

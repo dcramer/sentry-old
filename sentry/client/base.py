@@ -85,11 +85,6 @@ class SentryClient(object):
 
         group.add_relation(event, date.strftime('%s.%m'))
 
-        # TODO: This logic should be some kind of "on-field-change" hook
-        backend.add_to_index(Group, group.pk, 'last_seen', group.last_seen.strftime('%s.%m'))
-        backend.add_to_index(Group, group.pk, 'time_spent', group.time_spent)
-        backend.add_to_index(Group, group.pk, 'count', group.count)
-
         return group
 
     def process(self, **kwargs):

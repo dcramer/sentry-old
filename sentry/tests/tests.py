@@ -77,3 +77,7 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(tag.key, 'view')
         self.assertEquals(tag.value, 'foo.bar.zoo.baz')
         self.assertEquals(tag.count, 1)
+
+        groups = Group.objects.all()
+
+        self.assertEquals(len(groups), 1)
