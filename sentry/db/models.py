@@ -1,7 +1,5 @@
 # Inspired by Django's models
 
-# TODO: make "default" indexing configurable via a param
-
 import datetime
 
 try:
@@ -167,9 +165,6 @@ class Model(object):
 
     def __repr__(self):
         return u'<%s: %s>' % (self.__class__.__name__, unicode(self))
-
-    def __str__(self):
-        return unicode(self.__str__)
 
     def __unicode__(self):
         return self.pk

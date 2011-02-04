@@ -16,17 +16,25 @@ class SentryTest(unittest2.TestCase):
         # or tests wont pass :)
         now = datetime.datetime.now()
 
-        group = client.create(
-            type='exception',
+        event, groups = client.create(
+            type='sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
                 ('view', 'foo.bar.zoo.baz'),
             ),
             date=now,
             time_spent=53,
+            data={
+                'msg_value': 'hello world',
+            }
         )
+        self.assertEquals(len(groups), 1)
+
+        group = groups[0]
+        group_id = group.pk
+
         self.assertTrue(group.pk)
-        self.assertEquals(group.type, 'exception')
+        self.assertEquals(group.type, 'sentry.events.MessageEvent')
         self.assertEquals(group.time_spent, 53)
         self.assertEquals(group.count, 1)
         self.assertEquals(len(group.tags), 2)
@@ -62,15 +70,23 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(tag[0], 'view')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
-        group = client.create(
-            type='exception',
+        event, groups = client.create(
+            type='sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
             ),
             date=now + datetime.timedelta(seconds=1),
             time_spent=100,
+            data={
+                'msg_value': 'hello world',
+            }
         )
 
+        self.assertEquals(len(groups), 1)
+
+        group = groups[0]
+
+        self.assertEquals(group.pk, group_id)
         self.assertEquals(group.count, 2)
         self.assertEquals(group.time_spent, 153)
         self.assertEquals(len(group.tags), 2)

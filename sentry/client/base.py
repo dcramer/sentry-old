@@ -23,64 +23,11 @@ class SentryClient(object):
         if not date:
             date = datetime.datetime.now()
 
-        # Grab our tags for this event
-        for k, v in tags:
-            # XXX: this should be cached
-            tag, created = Tag.objects.get_or_create(
-                key=k,
-                value=v,
-                defaults={
-                    'count': 1,
-                })
-            # Maintain counts
-            if not created:
-                tag.incr('count')
-            Tag.objects.add_to_index(tag.pk, 'count', int(tag.count))
+        module, class_name = type.rsplit('.', 1)
 
-        # Handle TagCount creation and incrementing
-        tc, created = TagCount.objects.get_or_create(
-            hash=TagCount.get_tags_hash(tags),
-            defaults={
-                'tags': tags,
-                'count': 1,
-            }
-        )
-        if not created:
-            tc.incr('count')
+        event_processor = getattr(__import__(module, {}, {}, [class_name], -1), class_name)
 
-        # XXX: We need some special handling for "data" as it shouldnt be part of the main hash??
-
-        # TODO: this should be generated from the TypeProcessor
-        ev_hash = 'foo'
-        event = Event.objects.create(
-            type=type,
-            hash=ev_hash,
-            date=date,
-            time_spent=time_spent,
-            tags=tags,
-        )
-        event.set_meta(**data)
-
-        # TODO: this should be generated from the group's specified preindexes
-        gr_hash = 'foo'
-        group, created = Group.objects.get_or_create(
-            type=type,
-            hash=gr_hash + ev_hash,
-            defaults={
-                'count': 1,
-                'time_spent': time_spent,
-                'tags': tags,
-            }
-        )
-        if not created:
-            group.incr('count')
-            if time_spent:
-                group.incr('time_spent', time_spent)
-        group.update(last_seen=event.date)
-
-        group.add_relation(event, date.strftime('%s.%m'))
-
-        return group
+        return event_processor().store(tags, data, date, time_spent)
 
     def process(self, **kwargs):
         from sentry.helpers import get_filters
