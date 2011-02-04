@@ -25,8 +25,28 @@ class SentryTest(unittest2.TestCase):
 
         event = events[0]
 
-        print event.__dict__
-
         self.assertEquals(event.time_spent, group.time_spent)
         self.assertEquals(event.type, group.type)
         self.assertEquals(event.date, group.last_seen)
+
+        group = client.create(
+            type='exception',
+            tags=(
+                ('server', 'foo.bar'),
+                ('view', 'foo.bar.zoo.baz'),
+            ),
+            time_spent=100,
+        )
+
+        self.assertEquals(group.count, 2)
+        self.assertEquals(group.time_spent, 153)
+
+        events = group.get_relations(Event)
+
+        self.assertEquals(len(events), 2)
+
+        event = events[1]
+
+        self.assertEquals(event.time_spent, 100)
+        self.assertEquals(event.type, group.type)
+        self.assertEquals(group.last_seen, event.date)

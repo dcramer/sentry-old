@@ -55,8 +55,8 @@ class RedisBackend(SentryBackend):
 
     def add_to_cindex(self, schema, pk, **keys):
         # adds an index to a composite index (for checking uniqueness)
-        self.conn.set('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(*keys.keys())), pk)
+        self.conn.set('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)), pk)
 
     def get_by_cindex(self, schema, **keys):
         # returns the primary key of an object from a composite index
-        return self.conn.get('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(*keys.keys())))
+        return self.conn.get('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)))

@@ -4,6 +4,15 @@ import datetime
 
 from sentry.db import backend
 
+def map_field_values(model, values):
+    result = {}
+    for k, v in values.iteritems():
+        field = model._fields.get(k)
+        if field:
+            v = field.to_db(v)
+        result[k] = v
+    return result
+
 class ManagerDescriptor(object):
     def __init__(self, manager):
         self.manager = manager
@@ -17,23 +26,16 @@ class Manager(object):
     def __init__(self, model):
         self.model = model
 
-    def _map(self, values):
-        for k, v in values.iteritems():
-            field = self.model._fields.get(k)
-            if field:
-                values[k] = field.to_db(v)
-        return values
-
     def get(self, pk):
         data = backend.get(self.model, pk)
-        return self.model(pk, **self._map(data))
+        return self.model(pk, **data)
 
     def create(self, **values):
-        pk = backend.add(self.model, **self._map(values))
+        pk = backend.add(self.model, **map_field_values(self.model, values))
         return self.model(pk, **values)
 
     def update(self, pk, **values):
-        return backend.set(self.model, pk, **self._map(values))
+        return backend.set(self.model, pk, **map_field_values(self.model, values))
 
     def add_to_index(self, pk, index, score):
         return backend.add_to_index(self.model, pk, index, score)
@@ -41,13 +43,17 @@ class Manager(object):
     def get_or_create(self, defaults={}, **index):
         # return (instance, created)
 
-        pk = backend.get_by_cindex(self.model, **self._map(index))
+        pk = backend.get_by_cindex(self.model, **map_field_values(self.model, index))
         if pk:
             return self.get(pk), False
 
+        defaults = defaults.copy()
         defaults.update(index)
+
         inst = self.create(**defaults)
-        backend.add_to_cindex(self.model, inst.pk, **self._map(index))
+
+        backend.add_to_cindex(self.model, inst.pk, **map_field_values(self.model, index))
+
         return inst, True
 
 class ModelDescriptor(type):
@@ -105,7 +111,7 @@ class Model(object):
         return result
 
     def update(self, **values):
-        backend.set(self.__class__, self.pk, **values)
+        self.objects.update(self.pk, **values)
         for k, v in values.iteritems():
             setattr(self, k, v)
 
@@ -148,7 +154,7 @@ class Integer(Field):
 
 class DateTime(Field):
     def to_db(self, value=None):
-        if value:
+        if isinstance(value, datetime.datetime):
             # TODO: coerce this to UTC
             value = value.strftime('%s')
         return value
@@ -157,6 +163,6 @@ class DateTime(Field):
         if value:
             if not isinstance(value, datetime.datetime):
                 # TODO: coerce this to a UTC datetime object
-                value = datetime.datetime.fromtimestamp(float(int(value)))
+                value = datetime.datetime.fromtimestamp(int(value))
             value = value.replace(microsecond=0)
         return value
