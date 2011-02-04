@@ -24,47 +24,6 @@ from sentry.plugins import GroupActionProvider
 from sentry.templatetags.sentry_helpers import with_priority
 from sentry.reporter import ImprovedExceptionReporter
 
-def login_required(func):
-    def wrapped(request, *args, **kwargs):
-        if not conf.PUBLIC:
-            if not request.user.is_authenticated():
-                return HttpResponseRedirect(reverse('sentry-login'))
-            if not request.user.has_perm('sentry_groupedmessage.can_view'):
-                return HttpResponseRedirect(reverse('sentry-login'))
-        return func(request, *args, **kwargs)
-    wrapped.__doc__ = func.__doc__
-    wrapped.__name__ = func.__name__
-    return wrapped
-
-@csrf_protect
-def login(request):
-    from django.contrib.auth import login as login_
-    from django.contrib.auth.forms import AuthenticationForm
-
-    if request.POST:
-        form = AuthenticationForm(request, request.POST)
-        if form.is_valid():
-            login_(request, form.get_user())
-            return HttpResponseRedirect(request.POST.get('next') or reverse('sentry'))
-        else:
-            request.session.set_test_cookie()
-    else:
-        form = AuthenticationForm(request)
-        request.session.set_test_cookie()
-
-
-    context = locals()
-    context.update(csrf(request))
-    return render_to_response('sentry/login.html', locals())
-
-def logout(request):
-    from django.contrib.auth import logout
-
-    logout(request)
-
-    return HttpResponseRedirect(reverse('sentry'))
-
-@login_required
 def index(request):
     filters = []
     for filter_ in get_filters():
@@ -75,29 +34,14 @@ def index(request):
     except (TypeError, ValueError):
         page = 1
 
-    # this only works in postgres
-    message_list = GroupedMessage.objects.extra(
-        select={
-            'score': GroupedMessage.get_score_clause(),
-        }
-    )
+    message_list = Group.objects.all(limit=25)
 
-    sort = request.GET.get('sort')
-    if sort == 'date':
-        message_list = message_list.order_by('-last_seen')
-    elif sort == 'new':
-        message_list = message_list.order_by('-first_seen')
-    else:
-        sort = 'priority'
-        message_list = message_list.order_by('-score', '-last_seen')
-
-
-    any_filter = False
-    for filter_ in filters:
-        if not filter_.is_set():
-            continue
-        any_filter = True
-        message_list = filter_.get_query_set(message_list)
+    # any_filter = False
+    # for filter_ in filters:
+    #     if not filter_.is_set():
+    #         continue
+    #     any_filter = True
+    #     message_list = filter_.get_query_set(message_list)
 
     today = datetime.datetime.now()
 
@@ -105,7 +49,6 @@ def index(request):
 
     return render_to_response('sentry/index.html', locals())
 
-@login_required
 def ajax_handler(request):
     op = request.REQUEST.get('op')
 
@@ -175,7 +118,6 @@ def ajax_handler(request):
     response['Content-Type'] = 'application/json'
     return response
 
-@login_required
 def group(request, group_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -206,7 +148,6 @@ def group(request, group_id):
 
     return render_to_response('sentry/group/details.html', locals())
 
-@login_required
 def group_message_list(request, group_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -216,7 +157,6 @@ def group_message_list(request, group_id):
 
     return render_to_response('sentry/group/message_list.html', locals())
 
-@login_required
 def group_message_details(request, group_id, message_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -269,7 +209,6 @@ def store(request):
 
     return HttpResponse()
 
-@login_required
 def group_plugin_action(request, group_id, slug):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 

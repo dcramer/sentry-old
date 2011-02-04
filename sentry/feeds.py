@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from django.utils import feedgenerator
 from django.utils.translation import ugettext_lazy as _
 
-from sentry.models import Message, GroupedMessage
+from sentry.models import Event, Group
 
 class MessageFeed(object):
     def __call__(self, request):

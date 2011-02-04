@@ -100,16 +100,11 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'sentry',
-    'sentry.client',
-    'sentry.plugins.sentry_redmine',
-    'sentry.plugins.sentry_servers',
-    'sentry.plugins.sentry_sites',
-    'sentry.plugins.sentry_urls',
-    'paging',
-    'south',
-    'indexer',
-    # Uncomment the next line to enable the admin:
-    # 'django.contrib.admin',
+    'sentry.client.django',
+    # 'sentry.plugins.sentry_redmine',
+    # 'sentry.plugins.sentry_servers',
+    # 'sentry.plugins.sentry_sites',
+    # 'sentry.plugins.sentry_urls',
 )
 
 import logging
@@ -136,7 +131,7 @@ else:
     INSTALLED_APPS = INSTALLED_APPS + (
         'debug_toolbar',
     )
-    
+
     MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + (
         'debug_toolbar.middleware.DebugToolbarMiddleware',
     )

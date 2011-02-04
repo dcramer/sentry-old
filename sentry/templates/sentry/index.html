@@ -1,14 +1,13 @@
-{% load paging_extras %}
 {% load sentry_helpers %}
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"> 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html lang="en">
-    <head> 
-        <meta http-equiv="content-type" content="text/html; charset=utf-8"> 
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
         <meta name="robots" content="NONE,NOARCHIVE">
         <link href='http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:light,regular&subset=latin' rel='stylesheet' type='text/css'>
         <link rel="shortcut icon" href="{% url sentry-media "images/sentry.png" %}"/>
-        <title>{% block title %}Sentry{% endblock %}</title> 
+        <title>{% block title %}Sentry{% endblock %}</title>
         <script type="text/javascript">
         SENTRY_JS_API_URL = '{% url sentry-ajax %}';
         </script>
@@ -17,11 +16,11 @@
         <script type="text/javascript" src="{% url sentry-media "scripts/jquery.animate-colors-min.js" %}"></script>
         <script type="text/javascript" src="{% url sentry-media "scripts/global.js" %}"></script>
         <style type="text/css">@import '{% url sentry-media "styles/global.css" %}';</style>
-    </head> 
-    
-    <body> 
+    </head>
+
+    <body>
         {% block body %}
-        <div id="header"> 
+        <div id="header">
             <div class="container">
                 <h1><a href="{% url sentry %}"><img src="{% url sentry-media "images/sentry.png" %}" border="0" width="32"/>Sentry</a></h1>
                 <h2>{% block heading %}Dashboard{% endblock %}</h2>
@@ -31,7 +30,7 @@
                     {% endif %}
                 </ul>
             </div>
-        </div> 
+        </div>
         <div id="content">
             {% block content_before %}
             {% endblock %}
@@ -42,18 +41,19 @@
                             <h2>Last 24 Hours</h2>
                             <img src="{{ chart_url }}" class="chart" alt="chart"/>
                         {% endif %}
-                    
+
+                        {% comment %}
                         {% for filter in filters %}
                             <h2>{{ filter.label }}</h2>
                             <form method="get" action="{{ filter.get_query_string|safe }}">
                                 {{ filter.render }}
                             </form>
                         {% endfor %}
+                        {% endcomment %}
                     </div>
 
                     <div id="body" class="with-sidebar column">
-                        {% paginate message_list from request as message_list per_page 15 %}
-                        {% if message_list.objects %}
+                        {% if message_list %}
                             <div class="clearfix">
                                 <div class="paging-wrap">
                                     <form method="GET" action="">
@@ -70,7 +70,6 @@
                                     {% if has_realtime %}
                                         <a id="sentry_realtime" class="realtime realtime-pause">Pause Feed</a>
                                     {% endif %}
-                                    {{ message_list.paging }}
                                 </div>
                             </div>
                             <ul class="messages" id="message_list">
@@ -78,9 +77,6 @@
                                     {% include "sentry/partial/_group.html" %}
                                 {% endfor %}
                             </ul>
-                            <div class="clearfix">
-                                {{ message_list.paging }}
-                            </div>
                         {% else %}
                             <ul class="messages" id="message_list"></ul>
                             <p class="no-messages" id="no_messages">No messages match your filters.</p>
@@ -93,7 +89,7 @@
             <div class="container">
                 Sentry {% sentry_version %} | Powered by sexy Django magic | Conjured up by the <a href="http://disqus.com">DISQUS</a> team and other noble <a href="http://github.com/dcramer/django-sentry/contributors">sorcerers</a>.
             </div>
-        </div> 
+        </div>
         {% endblock %}
     </body>
     {% if has_realtime %}

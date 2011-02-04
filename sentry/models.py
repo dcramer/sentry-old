@@ -12,21 +12,10 @@ import hashlib
 import logging
 import sys
 
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-
 from sentry import conf
 from sentry.db import models, backend
 from sentry.helpers import cached_property, construct_checksum, get_db_engine, transform, get_filters
 from sentry.reporter import FakeRequest
-
-_reqs = ('paging',)
-for r in _reqs:
-    if r not in settings.INSTALLED_APPS:
-        raise ImproperlyConfigured("Put '%s' in your "
-            "INSTALLED_APPS setting in order to use the sentry application." % r)
-
-from indexer.models import Index
 
 try:
     from idmapper.models import SharedMemoryModel as Model
@@ -138,7 +127,7 @@ class Event(models.Model):
 
         obj_request = message.request
 
-        subject = 'Error (%s IP): %s' % ((obj_request.META.get('REMOTE_ADDR') in settings.INTERNAL_IPS and 'internal' or 'EXTERNAL'), obj_request.path)
+        subject = 'Error (%s IP): %s' % (obj_request.META.get('REMOTE_ADDR'), obj_request.path)
         if message.site:
             subject  = '[%s] %s' % (message.site, subject)
         try:
@@ -160,7 +149,7 @@ class Event(models.Model):
         })
 
         send_mail(subject, body,
-                  settings.SERVER_EMAIL, conf.ADMINS,
+                  conf.SERVER_EMAIL, conf.ADMINS,
                   fail_silently=fail_silently)
 
 class RequestEvent(object):
