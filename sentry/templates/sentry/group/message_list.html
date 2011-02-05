@@ -1,7 +1,5 @@
 {% extends "sentry/group/details.html" %}
 
-{% load paging_extras %}
-
 {% block inner %}
     <h2>Message List</h2>
     {% paginate message_list from request as message_list per_page 15 %}

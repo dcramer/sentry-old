@@ -18,7 +18,7 @@ from django.utils.safestring import mark_safe
 
 from sentry import conf
 from sentry.helpers import get_filters
-from sentry.models import GroupedMessage, Message
+from sentry.models import Event, Group
 from sentry.plugins import GroupActionProvider
 from sentry.templatetags.sentry_helpers import with_priority
 from sentry.reporter import ImprovedExceptionReporter
@@ -33,10 +33,10 @@ class SentryNexusModule(NexusModule):
 
     def get_title(self):
         return 'Sentry'
-    
+
     def get_urls(self):
         from django.conf.urls.defaults import patterns, url
-        
+
         return patterns('',
             # Feeds
 

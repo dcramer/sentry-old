@@ -1,7 +1,5 @@
 {% extends "sentry/group/details.html" %}
 
-{% load paging_extras %}
-
 {% block inner %}
     <h2>Site List</h2>
     {% paginate group.unique_sites from request as site_list per_page 25 %}

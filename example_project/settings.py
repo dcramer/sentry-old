@@ -124,21 +124,23 @@ SENTRY_SEARCH_OPTIONS = {
     'path': os.path.join(PROJECT_ROOT, 'sentry_index'),
 }
 
+NEXUS_MEDIA_PREFIX = '/media/'
+
 # This shouldn't be needed, but bleh
 # HAYSTACK_SITECONF = 'sentry.search_indexes'
 
-try:
-    import debug_toolbar
-except ImportError, exc:
-    pass
-else:
-    INSTALLED_APPS = INSTALLED_APPS + (
-        'debug_toolbar',
-    )
+# try:
+#     import debug_toolbar
+# except ImportError, exc:
+#     pass
+# else:
+#     INSTALLED_APPS = INSTALLED_APPS + (
+#         'debug_toolbar',
+#     )
 
-    MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + (
-        'debug_toolbar.middleware.DebugToolbarMiddleware',
-    )
+#     MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + (
+#         'debug_toolbar.middleware.DebugToolbarMiddleware',
+#     )
 
 try:
     from local_settings import *

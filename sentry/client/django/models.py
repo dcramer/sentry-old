@@ -5,7 +5,7 @@ import logging
 import warnings
 
 from django.core.signals import got_request_exception
-from django.db import  transaction
+from django.db import transaction
 
 from sentry import conf
 

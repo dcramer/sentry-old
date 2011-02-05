@@ -1,5 +1,7 @@
 {% extends "nexus/module.html" %}
 
+{% load sentry_helpers %}
+
 {% block head %}
     {{ block.super }}
     <link rel="stylesheet" href="{{ nexus_media_prefix }}/sentry/styles/global.css">
@@ -11,8 +13,6 @@
     <script type="text/javascript" src="{{ nexus_media_prefix }}/sentry/scripts/global.js"></script>
     <style type="text/css">@import '{{ nexus_media_prefix }}/sentry/styles/global.css';</style>
 {% endblock %}
-
-{% load paging_extras %}
 
 {% block content %}
     <div id="sidebar" class="column">
@@ -34,9 +34,6 @@
     </div>
 
     <div id="body" class="with-sidebar column">
-        {% paginate message_list from request as message_list per_page 15 %}
-
-
         <div class="clearfix">
             <div class="paging-wrap">
                 <form method="GET" action="">
@@ -53,11 +50,10 @@
                 {% if has_realtime %}
                     <a id="sentry_realtime" href="javascript:void(0);" class="button small realtime realtime-pause">Pause Feed</a>
                 {% endif %}
-                {{ message_list.paging }}
             </div>
         </div>
 
-        {% if message_list.objects %}
+        {% if message_list %}
             <ul class="messages" id="message_list">
                 {% for group, priority in message_list.objects|with_priority %}
                     {% include "sentry/partial/_group.html" %}
@@ -68,10 +64,6 @@
                 <li class="no-messages" id="no_messages">No messages match your filters.</li>
             </ul>
         {% endif %}
-
-        <div class="clearfix">
-            {{ message_list.paging }}
-        </div>
 
     </div>
 {% endblock %}
