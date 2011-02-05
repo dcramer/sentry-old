@@ -145,3 +145,21 @@ class SentryTest(unittest2.TestCase):
 
         self.assertEquals(event.type, 'sentry.events.MessageEvent')
         self.assertEquals(event.time_spent, 0)
+
+    def test_exception_event(self):
+        try:
+            raise ValueError('foo bar')
+        except:
+            pass
+
+        event_id = store('ExceptionEvent')
+
+        event = Event.objects.get(event_id)
+
+        self.assertEquals(event.type, 'sentry.events.ExceptionEvent')
+        self.assertEquals(event.time_spent, 0)
+
+        data = event.data
+
+        self.assertEquals(data['exc_value'], 'foo bar')
+        self.assertEquals(data['exc_type'], 'ValueError')

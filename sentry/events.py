@@ -1,10 +1,12 @@
 import datetime
 import hashlib
+import sys
+import traceback
 import uuid
 
 from sentry import conf
 from sentry.client import client
-from sentry.helpers import get_versions, transform
+from sentry.helpers import get_versions, transform, shorten, varmap, get_installed_apps
 from sentry.models import TagCount, Tag, Group, Event
 
 def store(type, *args, **kwargs):
@@ -189,10 +191,91 @@ class ExceptionEvent(BaseEvent):
 
     - exc_value: 'My exception value'
     - exc_type: 'module.ClassName'
-    - exc_frames: [(line number, line text, filename, truncated locals)]
+    - exc_frames: [(module path, line number, line text, truncated locals)]
+    - exc_template: 'template/name.html'
     """
-    def get_event_has(self, exc_value=None, exc_type=None, exc_frames=None, **kwargs):
+    def get_event_hash(self, exc_value=None, exc_type=None, exc_frames=None, **kwargs):
         return [exc_value, exc_type]
+
+    def to_string(self, event):
+        return '%s: %s' % (event.data['exc_type'], event.data['exc_value'])
+
+    def handle(self, exc_info=None):
+        # TODO: remove Django specifics
+        from django.template import TemplateSyntaxError
+        from django.views.debug import ExceptionReporter
+
+        if exc_info is None:
+            exc_info = sys.exc_info()
+
+        exc_type, exc_value, exc_traceback = exc_info
+
+        result = {
+            'tags': [('level', 'error')],
+        }
+
+        reporter = ExceptionReporter(None, exc_type, exc_value, exc_traceback)
+        exc_frames = varmap(shorten, reporter.get_traceback_frames())
+
+        # This should be cached
+        modules = get_installed_apps()
+        if conf.INCLUDE_PATHS:
+            modules = set(list(modules) + conf.INCLUDE_PATHS)
+
+        def iter_tb_frames(tb):
+            while tb:
+                yield tb.tb_frame
+                tb = tb.tb_next
+
+        def contains(iterator, value):
+            for k in iterator:
+                if value.startswith(k):
+                    return True
+            return False
+
+        # We iterate through each frame looking for an app in INSTALLED_APPS
+        # When one is found, we mark it as last "best guess" (best_guess) and then
+        # check it against SENTRY_EXCLUDE_PATHS. If it isnt listed, then we
+        # use this option. If nothing is found, we use the "best guess".
+        best_guess = None
+        view = None
+        for frame in iter_tb_frames(exc_traceback):
+            try:
+                view = '.'.join([frame.f_globals['__name__'], frame.f_code.co_name])
+            except:
+                continue
+            if contains(modules, view):
+                if not (contains(conf.EXCLUDE_PATHS, view) and best_guess):
+                    best_guess = view
+            elif best_guess:
+                break
+        if best_guess:
+            view = best_guess
+
+        if view:
+            result['tags'].append(('view', view))
+
+        if hasattr(exc_type, '__class__'):
+            exc_module = exc_type.__class__.__module__
+            if exc_module == '__builtin__':
+                exc_type = exc_type.__name__
+            else:
+                exc_type = '%s.%s' % (exc_module, exc_type.__name__)
+        else:
+            exc_module = None
+            exc_type = exc_type.__name__
+
+        if isinstance(exc_value, TemplateSyntaxError) and hasattr(exc_value, 'source'):
+            origin, (start, end) = exc_value.source
+            result['exc_template'] = (origin.reload(), start, end, origin.name)
+            result['tags'].append(('template', origin.loadname))
+
+        tb_message = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+
+        result['exc_value'] = transform(exc_value)
+        result['exc_type'] = exc_type
+
+        return result
 
 class SQLEvent(BaseEvent):
     """

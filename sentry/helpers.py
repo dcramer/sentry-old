@@ -14,9 +14,9 @@ from sentry import conf
 _FILTER_CACHE = None
 def get_filters():
     global _FILTER_CACHE
-    
+
     if _FILTER_CACHE is None:
-        
+
         filters = []
         for filter_ in conf.FILTERS:
             module_name, class_name = filter_.rsplit('.', 1)
@@ -50,6 +50,12 @@ def construct_checksum(level=logging.ERROR, class_name='', traceback='', message
         message = message.encode('utf-8', 'replace')
     checksum.update(message)
     return checksum.hexdigest()
+
+def shorten(var):
+    var = transform(var)
+    if isinstance(var, basestring) and len(var) > 200:
+        var = var[:200] + '...'
+    return var
 
 def varmap(func, var):
     if isinstance(var, dict):
