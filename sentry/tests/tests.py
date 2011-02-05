@@ -11,7 +11,12 @@ class SentryTest(unittest2.TestCase):
         backend.conn.flushdb()
 
     def test_create_from_text(self):
-        client.create_from_text('foo')
+        event_id = client.create_from_text('foo')
+
+        event = Event.objects.get(event_id)
+
+        self.assertEquals(event.type, 'sentry.events.MessageEvent')
+        self.assertEquals(event.time_spent, 0)
 
     # Some quick ugly high level tests to get shit working fast
     def test_create(self):

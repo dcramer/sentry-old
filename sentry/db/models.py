@@ -218,6 +218,8 @@ class Field(object):
         return value
 
     def to_db(self, value=None):
+        if value is None:
+            value = ''
         return value
 
     def to_python(self, value=None):
@@ -233,6 +235,8 @@ class Integer(Field):
     def to_python(self, value=None):
         if value:
             value = int(value)
+        else:
+            value = 0
         return value
 
 class DateTime(Field):
