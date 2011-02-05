@@ -2,6 +2,7 @@ import unittest2
 import datetime
 
 from sentry.client import client
+from sentry.events import store
 from sentry.db import backend
 from sentry.models import Event, Tag, Group
 
@@ -10,21 +11,13 @@ class SentryTest(unittest2.TestCase):
         # TODO: this should change schemas, or something
         backend.conn.flushdb()
 
-    def test_create_from_text(self):
-        event_id = client.create_from_text('foo')
-
-        event = Event.objects.get(event_id)
-
-        self.assertEquals(event.type, 'sentry.events.MessageEvent')
-        self.assertEquals(event.time_spent, 0)
-
     # Some quick ugly high level tests to get shit working fast
     def test_create(self):
         # redis is so blazing fast that we have to artificially inflate dates
         # or tests wont pass :)
         now = datetime.datetime.now()
 
-        event, groups = client.create(
+        event, groups = client.store(
             type='sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
@@ -78,7 +71,7 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(tag[0], 'view')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
-        event, groups = client.create(
+        event, groups = client.store(
             type='sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
@@ -144,3 +137,11 @@ class SentryTest(unittest2.TestCase):
         groups = Group.objects.all()
 
         self.assertEquals(len(groups), 1)
+
+    def test_message_event(self):
+        event_id = store('MessageEvent', 'foo')
+
+        event = Event.objects.get(event_id)
+
+        self.assertEquals(event.type, 'sentry.events.MessageEvent')
+        self.assertEquals(event.time_spent, 0)

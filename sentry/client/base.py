@@ -21,7 +21,7 @@ class SentryClient(object):
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('sentry.errors')
 
-    def create(self, type, tags=[], data={}, date=None, time_spent=None, event_id=None):
+    def store(self, type, tags=[], data={}, date=None, time_spent=None, event_id=None):
         from sentry.models import Event, Group, Tag, TagCount
 
         if not date:
@@ -32,73 +32,6 @@ class SentryClient(object):
         event_processor = getattr(__import__(module, {}, {}, [class_name], -1), class_name)
 
         return event_processor().store(tags, data, date, time_spent, event_id)
-
-    def process(self, type, tags=[], date=None, time_spent=None, request=None, **data):
-        "Processes the message before passing it on to the server"
-        from sentry.helpers import get_filters
-
-        if request:
-            data.update(dict(
-                s_meta=request.META,
-                s_post=request.POST,
-                s_get=request.GET,
-                s_cookies=request.COOKIES,
-            ))
-            tags.append(('url', request.build_absolute_uri()))
-
-        tags.append(('server', conf.NAME))
-
-        versions = get_versions()
-
-        data['s_versions'] = versions
-
-        if data.get('s_view'):
-            # get list of modules from right to left
-            parts = data['s_view'].split('.')
-            module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
-            version = None
-            module = None
-            for m in module_list:
-                if m in versions:
-                    module = m
-                    version = versions[m]
-
-            data['s_view'] = view
-
-            # store our "best guess" for application version
-            if version:
-                data.update({
-                    's_version': version,
-                    's_module': module,
-                })
-
-        # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
-        # if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
-        #     cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
-        #     added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
-        #     if not added:
-        #         try:
-        #             thrash_count = cache.incr(cache_key)
-        #         except (KeyError, ValueError):
-        #             # cache.incr can fail. Assume we aren't thrashing yet, and
-        #             # if we are, hope that the next error has a successful
-        #             # cache.incr call.
-        #             thrash_count = 0
-        #         if thrash_count > conf.THRASHING_LIMIT:
-        #             return
-
-        # for filter_ in get_filters():
-        #     kwargs = filter_(None).process(kwargs) or kwargs
-
-        # create ID client-side so that it can be passed to application
-        event_id = uuid.uuid4().hex
-
-        # Make sure all data is coerced
-        data = transform(data)
-
-        self.send(type=type, tags=tags, data=data, date=date, time_spent=time_spent, event_id=event_id)
-
-        return event_id
 
     def send(self, **kwargs):
         "Sends the message to the server."
@@ -120,7 +53,7 @@ class SentryClient(object):
                                  exc_info=True, extra={'data':{'remote_url': url}})
                     logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
         else:
-            return self.create(**kwargs)
+            return self.store(**kwargs)
 
     # TODO: move the following into some API for events
 

@@ -38,11 +38,6 @@ class Tag(models.Model):
     def __unicode__(self):
         return u"%s=%s; count=%s" % (self.key, self.value, self.count)
 
-    def save(self, *args, **kwargs):
-        if not self.hash:
-            self.hash = hashlib.md5(self.value).hexdigest()
-        super(Tag, self).save(*args, **kwargs)
-
 class TagCount(models.Model):
     """
     Stores the total number of events recorded for a combination of tags.
@@ -106,11 +101,6 @@ class Event(models.Model):
 
     class Meta:
         ordering = 'date'
-
-    def save(self, *args, **kwargs):
-        if not self.hash:
-            self.hash = construct_checksum(**self.__dict__)
-        super(Event, self).save(*args, **kwargs)
 
     def mail_admins(self, request=None, fail_silently=True):
         if not conf.ADMINS:

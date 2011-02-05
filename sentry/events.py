@@ -1,15 +1,24 @@
 import datetime
 import hashlib
+import uuid
 
 from sentry import conf
+from sentry.client import client
+from sentry.helpers import get_versions, transform
 from sentry.models import TagCount, Tag, Group, Event
+
+def store(type, *args, **kwargs):
+    proc = globals()[type]()
+    data = proc.handle(*args, **kwargs)
+    result = proc.process(**data)
+    return result
 
 class BaseEvent(object):
     def get_id(self):
         "Returns a unique identifier for this event class."
         return '.'.join([self.__class__.__module__, self.__class__.__name__])
 
-    def store(self, tags, data, date=None, time_spent=None, event_id=None):
+    def store(self, tags=[], data={}, date=None, time_spent=None, event_id=None):
         "Saves the event in the database."
         proc_id = self.get_id()
 
@@ -90,6 +99,73 @@ class BaseEvent(object):
 
         return event, groups
 
+    def process(self, tags=[], date=None, time_spent=None, request=None, **data):
+        "Processes the message before passing it on to the server"
+        from sentry.helpers import get_filters
+
+        if request:
+            data.update(dict(
+                s_meta=request.META,
+                s_post=request.POST,
+                s_get=request.GET,
+                s_cookies=request.COOKIES,
+            ))
+            tags.append(('url', request.build_absolute_uri()))
+
+        tags.append(('server', conf.NAME))
+
+        versions = get_versions()
+
+        data['s_versions'] = versions
+
+        if data.get('s_view'):
+            # get list of modules from right to left
+            parts = data['s_view'].split('.')
+            module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
+            version = None
+            module = None
+            for m in module_list:
+                if m in versions:
+                    module = m
+                    version = versions[m]
+
+            data['s_view'] = view
+
+            # store our "best guess" for application version
+            if version:
+                data.update({
+                    's_version': version,
+                    's_module': module,
+                })
+
+        # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
+        # if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
+        #     cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
+        #     added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
+        #     if not added:
+        #         try:
+        #             thrash_count = cache.incr(cache_key)
+        #         except (KeyError, ValueError):
+        #             # cache.incr can fail. Assume we aren't thrashing yet, and
+        #             # if we are, hope that the next error has a successful
+        #             # cache.incr call.
+        #             thrash_count = 0
+        #         if thrash_count > conf.THRASHING_LIMIT:
+        #             return
+
+        # for filter_ in get_filters():
+        #     kwargs = filter_(None).process(kwargs) or kwargs
+
+        # create ID client-side so that it can be passed to application
+        event_id = uuid.uuid4().hex
+
+        # Make sure all data is coerced
+        data = transform(data)
+
+        client.send(type=self.get_id(), tags=tags, data=data, date=date, time_spent=time_spent, event_id=event_id)
+
+        return event_id
+
 class MessageEvent(BaseEvent):
     """
     Messages store the following metadata:
@@ -102,11 +178,10 @@ class MessageEvent(BaseEvent):
     def to_string(self, event):
         return event.data['msg_value']
 
-    def process(self, message, **data):
+    def handle(self, message):
         return {
             'msg_value': message,
         }
-
 
 class ExceptionEvent(BaseEvent):
     """
