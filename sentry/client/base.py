@@ -5,6 +5,7 @@ import logging
 import sys
 import traceback
 import urllib2
+import uuid
 
 from django.core.cache import cache
 from django.template import TemplateSyntaxError
@@ -13,7 +14,8 @@ from django.views.debug import ExceptionReporter
 from sentry import conf
 from sentry.db import backend
 from sentry.models import Event, Group, Tag, TagCount
-from sentry.helpers import construct_checksum, varmap, transform, get_installed_apps, urlread, force_unicode
+from sentry.helpers import construct_checksum, varmap, transform, get_installed_apps, urlread, force_unicode, \
+                           get_versions
 
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
@@ -32,62 +34,15 @@ class SentryClient(object):
         return event_processor().store(tags, data, date, time_spent)
 
     def process(self, **kwargs):
+        "Processes the message before passing it on to the server"
         from sentry.helpers import get_filters
 
-        kwargs.setdefault('level', logging.ERROR)
-        kwargs.setdefault('server_name', conf.NAME)
+        if kwargs.get('data'):
+            # Ensure we're not changing the original data which was passed
+            # to Sentry
+            kwargs['data'] = kwargs['data'].copy()
 
-        if 'checksum' not in kwargs:
-            checksum = construct_checksum(**kwargs)
-        else:
-            checksum = kwargs['checksum']
-
-        # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
-        if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
-            cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
-            added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
-            try:
-                if not added and cache.incr(cache_key) > conf.THRASHING_LIMIT:
-                    return
-            except KeyError:
-                pass
-
-        for filter_ in get_filters():
-            kwargs = filter_(None).process(kwargs) or kwargs
-
-        # Make sure all additional data is coerced
-        if 'data' in kwargs:
-            kwargs['data'] = transform(kwargs['data'])
-
-        return self.send(**kwargs)
-
-    def send(self, **kwargs):
-        if conf.REMOTE_URL:
-            for url in conf.REMOTE_URL:
-                data = {
-                    'data': base64.b64encode(pickle.dumps(kwargs).encode('zlib')),
-                    'key': conf.KEY,
-                }
-                try:
-                    urlread(url, post=data, timeout=conf.REMOTE_TIMEOUT)
-                except urllib2.URLError, e:
-                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=True, extra={'remote_url': url})
-                    self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
-                except urllib2.HTTPError, e:
-                    self.logger.error('Unable to reach Sentry log server: %s' % (e,), exc_info=True, extra={'body': e.read(), 'remote_url': url})
-                    self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
-        else:
-            return self.create(**kwargs)
-
-    def create_from_record(self, record, **kwargs):
-        """
-        Creates an error log for a `logging` module `record` instance.
-        """
-        for k in ('url', 'view', 'data'):
-            if k not in kwargs:
-                kwargs[k] = record.__dict__.get(k)
-
-        request = getattr(record, 'request', None)
+        request = kwargs.pop('request', None)
         if request:
             if not kwargs.get('data'):
                 kwargs['data'] = {}
@@ -100,6 +55,100 @@ class SentryClient(object):
 
             if not kwargs.get('url'):
                 kwargs['url'] = request.build_absolute_uri()
+
+        kwargs.setdefault('level', logging.ERROR)
+        kwargs.setdefault('server_name', conf.NAME)
+
+        # save versions of all installed apps
+        if 'data' not in kwargs or '__sentry__' not in (kwargs['data'] or {}):
+            if kwargs.get('data') is None:
+                kwargs['data'] = {}
+            kwargs['data']['__sentry__'] = {}
+
+        versions = get_versions()
+        kwargs['data']['__sentry__']['versions'] = versions
+
+        if kwargs.get('view'):
+            # get list of modules from right to left
+            parts = kwargs['view'].split('.')
+            module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
+            version = None
+            module = None
+            for m in module_list:
+                if m in versions:
+                    module = m
+                    version = versions[m]
+
+            # store our "best guess" for application version
+            if version:
+                kwargs['data']['__sentry__'].update({
+                    'version': version,
+                    'module': module,
+                })
+
+        if 'checksum' not in kwargs:
+            checksum = construct_checksum(**kwargs)
+        else:
+            checksum = kwargs['checksum']
+
+        # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
+        if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
+            cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
+            added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
+            if not added:
+                try:
+                    thrash_count = cache.incr(cache_key)
+                except (KeyError, ValueError):
+                    # cache.incr can fail. Assume we aren't thrashing yet, and
+                    # if we are, hope that the next error has a successful
+                    # cache.incr call.
+                    thrash_count = 0
+                if thrash_count > conf.THRASHING_LIMIT:
+                    return
+
+        for filter_ in get_filters():
+            kwargs = filter_(None).process(kwargs) or kwargs
+
+        # create ID client-side so that it can be passed to application
+        message_id = uuid.uuid4().hex
+        kwargs['message_id'] = message_id
+
+        # Make sure all data is coerced
+        kwargs = transform(kwargs)
+
+        self.send(**kwargs)
+
+        return message_id
+
+    def send(self, **kwargs):
+        "Sends the message to the server."
+        if conf.REMOTE_URL:
+            for url in conf.REMOTE_URL:
+                data = {
+                    'data': base64.b64encode(pickle.dumps(kwargs).encode('zlib')),
+                    'key': conf.KEY,
+                }
+                try:
+                    urlread(url, post=data, timeout=conf.REMOTE_TIMEOUT)
+                except urllib2.HTTPError, e:
+                    body = e.read()
+                    logger.error('Unable to reach Sentry log server: %s (url: %%s, body: %%s)' % (e,), url, body,
+                                 exc_info=True, extra={'data':{'body': body, 'remote_url': url}})
+                    logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
+                except urllib2.URLError, e:
+                    logger.error('Unable to reach Sentry log server: %s (url: %%s)' % (e,), url,
+                                 exc_info=True, extra={'data':{'remote_url': url}})
+                    logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
+        else:
+            return self.create(**kwargs)
+
+    def create_from_record(self, record, **kwargs):
+        """
+        Creates an error log for a ``logging`` module ``record`` instance.
+        """
+        for k in ('url', 'view', 'request', 'data'):
+            if k not in kwargs:
+                kwargs[k] = record.__dict__.get(k)
 
         kwargs.update({
             'logger': record.name,
@@ -126,7 +175,7 @@ class SentryClient(object):
 
     def create_from_text(self, message, **kwargs):
         """
-        Creates an error log for from ``type`` and ``message``.
+        Creates an error log for from ``message``.
         """
         return self.process(
             message=message,
@@ -175,7 +224,10 @@ class SentryClient(object):
             best_guess = None
             view = None
             for frame in iter_tb_frames(exc_traceback):
-                view = '.'.join([frame.f_globals['__name__'], frame.f_code.co_name])
+                try:
+                    view = '.'.join([frame.f_globals['__name__'], frame.f_code.co_name])
+                except:
+                    continue
                 if contains(modules, view):
                     if not (contains(conf.EXCLUDE_PATHS, view) and best_guess):
                         best_guess = view
@@ -188,8 +240,12 @@ class SentryClient(object):
                 kwargs['view'] = view
 
         data = kwargs.pop('data', {}) or {}
+        if hasattr(exc_type, '__class__'):
+            exc_module = exc_type.__class__.__module__
+        else:
+            exc_module = None
         data['__sentry__'] = {
-            'exc': map(transform, [exc_type.__class__.__module__, exc_value.args, frames]),
+            'exc': map(transform, [exc_module, exc_value.args, frames]),
         }
 
         if isinstance(exc_value, TemplateSyntaxError) and hasattr(exc_value, 'source'):
@@ -210,3 +266,7 @@ class SentryClient(object):
             **kwargs
         )
 
+class DummyClient(SentryClient):
+    "Sends messages into an empty void"
+    def send(self, **kwargs):
+        return None

@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.utils.datastructures import SortedDict
 from django.utils.safestring import mark_safe
+from django.utils.html import escape
 
 from sentry import conf
 
@@ -14,20 +15,21 @@ class Widget(object):
         return self.filter.get_query_string()
 
 class TextWidget(Widget):
-    def render(self, value):
-        return mark_safe('<div id="search"><p class="textfield"><input type="text" name="%(name)s" value="%(value)s"/></p><p class="submit"><input type="submit" class="search-submit"/></p></div>' % dict(
+    def render(self, value, placeholder='', **kwargs):
+        return mark_safe('<div class="filter-text"><p class="textfield"><input type="text" name="%(name)s" value="%(value)s" placeholder="%(placeholder)s"/></p><p class="submit"><input type="submit" class="search-submit"/></p></div>' % dict(
             name=self.filter.get_query_param(),
-            value=value,
+            value=escape(value),
+            placeholder=escape(placeholder),
         ))
 
 class ChoiceWidget(Widget):
-    def render(self, value):
+    def render(self, value, **kwargs):
         choices = self.filter.get_choices()
         query_string = self.get_query_string()
         column = self.filter.get_query_param()
 
-        output = ['<ul class="%s-list filter-list sidebar-module">' % (self.filter.column,)]
-        output.append('<li%(active)s><a href="%(query_string)s&amp;%(column)s">Any %(label)s</a></li>' % dict(
+        output = ['<ul class="%s-list filter-list" rel="%s">' % (self.filter.column, column)]
+        output.append('<li%(active)s><a href="%(query_string)s&amp;%(column)s=">Any %(label)s</a></li>' % dict(
             active=not value and ' class="active"' or '',
             query_string=query_string,
             label=self.filter.label,
@@ -35,7 +37,7 @@ class ChoiceWidget(Widget):
         ))
         for key, val in choices.iteritems():
             key = unicode(key)
-            output.append('<li%(active)s><a href="%(query_string)s&amp;%(column)s=%(key)s">%(value)s</a></li>' % dict(
+            output.append('<li%(active)s rel="%(key)s"><a href="%(query_string)s&amp;%(column)s=%(key)s">%(value)s</a></li>' % dict(
                 active=value == key and ' class="active"' or '',
                 column=column,
                 key=key,
@@ -51,6 +53,7 @@ class SentryFilter(object):
     widget = ChoiceWidget
     # This must be a string
     default = ''
+    show_label = True
     
     def __init__(self, request):
         self.request = request
@@ -96,6 +99,20 @@ class SentryFilter(object):
     def render(self):
         widget = self.get_widget()
         return widget.render(self.get_value())
+
+class SearchFilter(SentryFilter):
+    label = 'Search'
+    column = 'content'
+    widget = TextWidget
+    show_label = False
+    
+    def get_query_set(self, queryset):
+        # this is really just a hack
+        return queryset
+
+    def render(self):
+        widget = self.get_widget()
+        return widget.render(self.get_value(), placeholder='search query or message id')
 
 class StatusFilter(SentryFilter):
     label = 'Status'

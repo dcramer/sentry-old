@@ -1,8 +1,8 @@
 from django import template
 from django.db.models import Count
 from django.utils import simplejson
+from django.template.defaultfilters import stringfilter
 
-from sentry.helpers import get_db_engine
 from sentry.plugins import GroupActionProvider
 
 import datetime
@@ -46,6 +46,7 @@ def chart_data(group, max_days=90):
     hours = max_days*24
     
     today = datetime.datetime.now().replace(microsecond=0, second=0, minute=0)
+    min_date = today - datetime.timedelta(hours=hours)
 
     if hasattr(group, '_state'):
         from django.db import connections
@@ -56,38 +57,35 @@ def chart_data(group, max_days=90):
     method = conn.ops.date_trunc_sql('hour', 'datetime')
 
     chart_qs = list(group.message_set.all()\
-                      .filter(datetime__gte=datetime.datetime.now() - datetime.timedelta(hours=hours))\
+                      .filter(datetime__gte=min_date)\
                       .extra(select={'grouper': method}).values('grouper')\
                       .annotate(num=Count('id')).values_list('grouper', 'num')\
                       .order_by('grouper'))
 
-    min_date = chart_qs[0][0]
-    if min_date and min_date < datetime.datetime.now() - datetime.timedelta(days=1):
-        stop_hours = (datetime.datetime.now() - min_date).days * 24
-        start_hours = (datetime.datetime.now() - chart_qs[-1][0]).days * 24
-    else:
-        stop_hours = 24
-        start_hours = 0
-    
+    if not chart_qs:
+        return {}
+
     rows = dict(chart_qs)
-    if rows:
-        max_y = max(rows.values())
-    else:
-        max_y = 1
-    
+
+    #just skip zeroes
+    first_seen = hours
+    while not rows.get(today - datetime.timedelta(hours=first_seen)) and first_seen > 24:
+        first_seen -= 1
+
     return {
-        'points': [rows.get(today-datetime.timedelta(hours=d), 0) for d in xrange(start_hours, stop_hours)][::-1],
-        'categories': [str(today-datetime.timedelta(hours=d)) for d in xrange(start_hours, stop_hours)][::-1],
+        'points': [rows.get(today-datetime.timedelta(hours=d), 0) for d in xrange(first_seen, -1, -1)],
+        'categories': [str(today-datetime.timedelta(hours=d)) for d in xrange(first_seen, -1, -1)],
     }
 
 @register.filter
 def to_json(data):
     return simplejson.dumps(data)
 
+@register.simple_tag
 def sentry_version():
-    from sentry import get_version
-    return get_version()
-register.simple_tag(sentry_version)
+    import sentry
+    
+    return sentry.VERSION
 
 @register.filter
 def get_actions(group, request):
@@ -137,3 +135,20 @@ def timesince(value):
     if value == '1 day':
         return 'Yesterday'
     return value + ' ago'
+
+@register.filter(name='truncatechars')
+@stringfilter
+def truncatechars(value, arg):
+    """
+    Truncates a string after a certain number of chars.
+
+    Argument: Number of chars to truncate after.
+    """
+    try:
+        length = int(arg)
+    except ValueError: # Invalid literal for int().
+        return value # Fail silently.
+    if len(value) > length:
+        return value[:length] + '...'
+    return value
+truncatechars.is_safe = True

@@ -7,7 +7,7 @@ If you haven't already, start by downloading Sentry. The easiest way is with *pi
 
 Or with *setuptools*::
 
-	easy_install django-sentry -U
+	easy_install -U django-sentry
 
 Once installed, update your settings.py and add ``sentry``, ``sentry.client``, ``indexer``, and ``paging`` to ``INSTALLED_APPS``::
 
@@ -17,7 +17,7 @@ Once installed, update your settings.py and add ``sentry``, ``sentry.client``, `
 	    'django.contrib.contenttypes',
 	    'django.contrib.sessions',
 	    
-	    # don't forget to add the dependancies!
+	    # don't forget to add the dependencies!
 	    'indexer',
 	    'paging',
 	    'sentry',
@@ -49,7 +49,7 @@ Requirements
 
 If you're installing it by hand, you'll need to fulfill the following requirements:
  
- - **Django >= 1.1**
+ - **Django >= 1.2**
  - **django-indexer** (stores metadata indexes)
  - **django-paging**
 

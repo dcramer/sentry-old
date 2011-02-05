@@ -1,17 +1,18 @@
 {% load sentry_helpers %}
+{% load paging_helpers %}
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html lang="en">
     <head>
         <meta http-equiv="content-type" content="text/html; charset=utf-8">
         <meta name="robots" content="NONE,NOARCHIVE">
-        <link href='http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:light,regular&subset=latin' rel='stylesheet' type='text/css'>
+        <link href='http{% if request.is_secure %}s{% endif %}://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:light,regular&amp;subset=latin' rel='stylesheet' type='text/css'>
         <link rel="shortcut icon" href="{% url sentry-media "images/sentry.png" %}"/>
         <title>{% block title %}Sentry{% endblock %}</title>
         <script type="text/javascript">
         SENTRY_JS_API_URL = '{% url sentry-ajax %}';
         </script>
-        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+        <script type="text/javascript" src="http{% if request.is_secure %}s{% endif %}://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
         <script type="text/javascript" src="{% url sentry-media "scripts/highcharts.js" %}" ></script>
         <script type="text/javascript" src="{% url sentry-media "scripts/jquery.animate-colors-min.js" %}"></script>
         <script type="text/javascript" src="{% url sentry-media "scripts/global.js" %}"></script>
@@ -44,50 +45,64 @@
 
                         {% comment %}
                         {% for filter in filters %}
-                            <h2>{{ filter.label }}</h2>
-                            <form method="get" action="{{ filter.get_query_string|safe }}">
-                                {{ filter.render }}
-                            </form>
+                            <div class="sidebar-module sidebar-module-{{ filter.column }}">
+                                {% if filter.show_label %}
+                                    <h2>{{ filter.label }}</h2>
+                                {% endif %}
+                                <form method="get" action="{{ filter.get_query_string|safe }}">
+                                    {{ filter.render }}
+                                </form>
+                            </div>
                         {% endfor %}
                         {% endcomment %}
                     </div>
 
                     <div id="body" class="with-sidebar column">
-                        {% if message_list %}
+                        {% paginate message_list from request as message_list per_page 15 %}
+
+                        <div class="paging-wrap">
                             <div class="clearfix">
-                                <div class="paging-wrap">
-                                    <form method="GET" action="">
-                                        {% for k, v in request.GET.iteritems %}
-                                            <input type="hidden" name="{{ k }}" value="{{ v }}"/>
-                                        {% endfor %}
-                                        <div class="sort-by">Sort by <select name="sort" onchange="this.form.submit()">
-                                            <option value=""{% ifequal sort 'priority' %} selected="selected"{% endifequal %}>Priority</option>
-                                            <option value="date"{% ifequal sort 'date' %} selected="selected"{% endifequal %}>Last Seen</option>
-                                            <option value="new"{% ifequal sort 'new' %} selected="selected"{% endifequal %}>First Seen</option>
-                                        </select>
-                                        </div>
-                                    </form>
-                                    {% if has_realtime %}
-                                        <a id="sentry_realtime" class="realtime realtime-pause">Pause Feed</a>
-                                    {% endif %}
-                                </div>
+                                <form method="GET" action="">
+                                    {% for k, v in request.GET.iteritems %}
+                                        <input type="hidden" name="{{ k }}" value="{{ v }}"/>
+                                    {% endfor %}
+                                    <div class="sort-by">Sort by <select name="sort" onchange="this.form.submit()">
+                                        <option value=""{% ifequal sort 'priority' %} selected="selected"{% endifequal %}>Priority</option>
+                                        <option value="date"{% ifequal sort 'date' %} selected="selected"{% endifequal %}>Last Seen</option>
+                                        <option value="new"{% ifequal sort 'new' %} selected="selected"{% endifequal %}>First Seen</option>
+                                    </select>
+                                    </div>
+                                </form>
+                                {% if has_realtime %}
+                                    <a id="sentry_realtime" class="realtime realtime-pause">Pause Feed</a>
+                                {% endif %}
+                                {{ message_list.paging }}
                             </div>
+                        </div>
+
+                        {% if message_list.objects %}
                             <ul class="messages" id="message_list">
                                 {% for group, priority in message_list.objects|with_priority %}
                                     {% include "sentry/partial/_group.html" %}
                                 {% endfor %}
                             </ul>
                         {% else %}
-                            <ul class="messages" id="message_list"></ul>
-                            <p class="no-messages" id="no_messages">No messages match your filters.</p>
+                            <ul class="messages" id="message_list">
+                                <li class="no-messages" id="no_messages">No messages match your filters.</li>
+                            </ul>
                         {% endif %}
+
+                        <div class="clearfix">
+                            {{ message_list.paging }}
+                        </div>
+
                     </div>
                 {% endblock %}
             </div>
          </div>
         <div id="footer">
             <div class="container">
-                Sentry {% sentry_version %} | Powered by sexy Django magic | Conjured up by the <a href="http://disqus.com">DISQUS</a> team and other noble <a href="http://github.com/dcramer/django-sentry/contributors">sorcerers</a>.
+                Sentry {% sentry_version %} | Powered by sexy Django magic | Conjured up by the <a href="http://code.disqus.com">DISQUS</a> team and other noble <a href="https://github.com/dcramer/django-sentry/contributors">sorcerers</a>.
             </div>
         </div>
         {% endblock %}

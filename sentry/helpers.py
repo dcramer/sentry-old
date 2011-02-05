@@ -1,10 +1,12 @@
 import logging
+import sys
 import urllib
 import urllib2
+import uuid
 
 import django
 from django.conf import settings
-from django.utils.encoding import smart_unicode
+from django.utils.encoding import force_unicode
 from django.utils.hashcompat import md5_constructor
 
 from sentry import conf
@@ -61,24 +63,36 @@ def transform(value):
     # TODO: make this extendable
     # TODO: include some sane defaults, like UUID
     # TODO: dont coerce strings to unicode, leave them as strings
-    if isinstance(value, (tuple, list)):
-        return [transform(o) for o in value]
+    if isinstance(value, (tuple, list, set, frozenset)):
+        return type(value)(transform(o) for o in value)
+    elif isinstance(value, uuid.UUID):
+        return repr(value)
     elif isinstance(value, dict):
         return dict((k, transform(v)) for k, v in value.iteritems())
-    elif isinstance(value, basestring):
-        value = force_unicode(value)
+    elif isinstance(value, unicode):
+        return to_unicode(value)
+    elif isinstance(value, str):
+        try:
+            return str(value)
+        except:
+            return to_unicode(value)
+    elif hasattr(value, '__sentry__'):
+        return value.__sentry__()
     elif not isinstance(value, (int, bool)) and value is not None:
         # XXX: we could do transform(repr(value)) here
-        return force_unicode(value)
+        return to_unicode(value)
     return value
 
-def force_unicode(value):
+def to_unicode(value):
     try:
-        value = smart_unicode(value)
+        value = unicode(force_unicode(value))
     except (UnicodeEncodeError, UnicodeDecodeError):
         value = '(Error decoding value)'
     except Exception: # in some cases we get a different exception
-        value = smart_unicode(type(value))
+        try:
+            value = str(repr(type(value)))
+        except Exception:
+            value = '(Error decoding value)'
     return value
 
 def get_installed_apps():
@@ -161,3 +175,33 @@ def urlread(url, get={}, post={}, headers={}, timeout=None):
     except:
         response = urllib2.urlopen(req, urllib.urlencode(post)).read()
     return response
+
+def get_versions(module_list=None):
+    if not module_list:
+        module_list = settings.INSTALLED_APPS + ['django']
+
+    ext_module_list = set()
+    for m in module_list:
+        parts = m.split('.')
+        ext_module_list.update('.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1))
+
+    versions = {}
+    for module_name in ext_module_list:
+        __import__(module_name)
+        app = sys.modules[module_name]
+        if hasattr(app, 'get_version'):
+            get_version = app.get_version
+            if callable(get_version):
+                version = get_version()
+            else:
+                version = get_version
+        elif hasattr(app, 'VERSION'):
+            version = app.VERSION
+        elif hasattr(app, '__version__'):
+            version = app.__version__
+        else:
+            continue
+        if isinstance(version, (list, tuple)):
+            version = '.'.join(str(o) for o in version)
+        versions[module_name] = version
+    return versions

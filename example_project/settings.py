@@ -112,16 +112,19 @@ logging.basicConfig(level=logging.DEBUG)
 
 SENTRY_THRASHING_TIMEOUT = 0
 SENTRY_TESTING = True
-SENTRY_FILTERS = (
-    'sentry.filters.StatusFilter',
-    'sentry.filters.LoggerFilter',
-    'sentry.filters.LevelFilter',
-    'sentry.filters.ServerNameFilter',
-    'sentry.filters.SiteFilter',
-    'example_project.filters.IPFilter',
-)
 SENTRY_SITE = 'example'
 SENTRY_PUBLIC = False
+
+# just to test
+HAYSTACK_SEARCH_ENGINE = 'whoosh'
+
+SENTRY_SEARCH_ENGINE = 'whoosh'
+SENTRY_SEARCH_OPTIONS = {
+    'path': os.path.join(PROJECT_ROOT, 'sentry_index'),
+}
+
+# This shouldn't be needed, but bleh
+# HAYSTACK_SITECONF = 'sentry.search_indexes'
 
 try:
     import debug_toolbar

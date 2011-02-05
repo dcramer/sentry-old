@@ -3,16 +3,31 @@
 {% load paging_extras %}
 {% load sentry_helpers %}
 
-{% block title %}{{ group.error }} | Django Sentry{% endblock %}
+{% block title %}{{ group.error }} | Sentry{% endblock %}
 
 {% block inner %}
     <ul class="messages" id="message_list">
         <li class="row1 active level-{{ message.level }}" data-sentry-count="{{ message.times_seen }}">
-            <h3><a href="{% url sentry-group-message group.pk message.pk %}">{% if message.url %}{{ message.url }}{% else %}{{ message.server_name }}{% endif %}</a></h3>
+            <h3>
+                {{ message.message_top|truncatechars:100 }}
+                {% if message.url %}
+                     on {{ message.url }}
+                {% endif %}
+            </h3>
             <span class="status status-{{ message.status }}">{{ message.get_status_display }}</span>
-            <p class="message"><span class="tag tag-level">{{ message.get_level_display }}</span> <span class="tag tag-server">{{ message.server_name }}</span><span class="last_seen">{{ message.datetime|timesince }}</span>
+            <p class="message">
+                {% if message.message_id %}
+                    <span class="tag tag-id">{{ message.message_id }}</span>
+                {% endif %}
+                <span class="tag tag-level">{{ message.get_level_display }}</span>
+                <span class="tag tag-server">{{ message.server_name }}</span>
+                {% with message.get_version as version %}
+                    {% if version %}
+                        <span class="tag tag-version">{{ version.0 }} {{ version.1 }}</span> 
+                    {% endif %}
+                {% endwith %}
+                <span class="last_seen">{{ message.datetime|timesince }}</span>
             </p>
-            <a href="{% url sentry-group-message group.pk message.pk %}" class="row_link"></a>
         </li>
         
     </ul>
@@ -28,32 +43,38 @@
     <div id="requestinfo">
         <h2>More Information</h2>
 
-        {% for k, v in json_data %}
-            <h3 id="get-info">{{ k }}</h3>
-            {% if v %}
-                {% if v|is_dict %}
-                    <table class="req">
-                        <thead>
-                            <tr>
-                                <th>Variable</th>
-                                <th>Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for k_, v_ in v.iteritems %}
-                            <tr>
-                                <td>{{ k_ }}</td>
-                                <td class="code"><div>{{ v_|pprint }}</div></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    {{ v|pprint }}
-                {% endif %}
-            {% else %}
-                <p>No data for {{ k }}</p>
-            {% endif %}
-        {% endfor %}
+        <table>
+            {% for k, v in json_data %}
+                <tr>
+                    <th class="key">{{ k }}</th>
+                    <td class="values">
+                    {% if v %}
+                        {% if v|is_dict %}
+                            <table class="vars">
+                                <thead>
+                                    <tr>
+                                        <th>Variable</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for k_, v_ in v.iteritems %}
+                                    <tr>
+                                        <td>{{ k_ }}</td>
+                                        <td class="code"><pre>{{ v_|pprint }}</pre></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            {{ v|pprint }}
+                        {% endif %}
+                    {% else %}
+                        <p>No data for {{ k }}</p>
+                    {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
     </div>
 {% endblock %}

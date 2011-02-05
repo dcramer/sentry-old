@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import logging
 import sys
-from os.path import dirname, abspath
+from os.path import dirname, abspath, join
 
 logging.getLogger('sentry').addHandler(logging.StreamHandler())
 
@@ -23,12 +23,11 @@ if not settings.configured:
             'django.contrib.contenttypes',
 
             'paging',
-            'indexer',
-            'south',
             'djcelery', # celery client
+            # 'haystack',
 
             'sentry',
-            'sentry.client',
+            'sentry.client.django',
             'sentry.client.celery',
 
             # included plugin tests
@@ -50,6 +49,12 @@ if not settings.configured:
         CELERY_ALWAYS_EAGER=True,
         SENTRY_THRASHING_LIMIT=0,
         TEMPLATE_DEBUG=True,
+        # HAYSTACK_SITECONF='sentry.search_indexes',
+        # HAYSTACK_SEARCH_ENGINE='whoosh',
+        # SENTRY_SEARCH_ENGINE='whoosh',
+        # SENTRY_SEARCH_OPTIONS={
+        #     'path': join(dirname(__file__), 'sentry_index'),
+        # },
     )
     import djcelery
     djcelery.setup_loader()
@@ -57,10 +62,6 @@ if not settings.configured:
 from django.test.simple import run_tests
 
 def runtests(*test_args):
-    if 'south' in settings.INSTALLED_APPS:
-        from south.management.commands import patch_for_test_db_setup
-        patch_for_test_db_setup()
-
     if not test_args:
         test_args = ['sentry']
     parent = dirname(abspath(__file__))

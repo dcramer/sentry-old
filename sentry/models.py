@@ -22,8 +22,6 @@ try:
 except ImportError:
     Model = models.Model
 
-__all__ = ('Message', 'GroupedMessage')
-
 class Tag(models.Model):
     """
     Stores a unique value of a tag.
@@ -152,6 +150,16 @@ class Event(models.Model):
                   conf.SERVER_EMAIL, conf.ADMINS,
                   fail_silently=fail_silently)
 
+    def get_version(self):
+        if not self.data:
+            return
+        if '__sentry__' not in self.data:
+            return
+        if 'version' not in self.data['__sentry__']:
+            return
+        module = self.data['__sentry__'].get('module', 'ver')
+        return module, self.data['__sentry__']['version']
+
 class RequestEvent(object):
     def __init__(self, data):
         self.data = data
@@ -159,11 +167,11 @@ class RequestEvent(object):
     @cached_property
     def request(self):
         fake_request = FakeRequest()
-        fake_request.META = self.data.get('META', {})
-        fake_request.GET = self.data.get('GET', {})
-        fake_request.POST = self.data.get('POST', {})
-        fake_request.FILES = self.data.get('FILES', {})
-        fake_request.COOKIES = self.data.get('COOKIES', {})
+        fake_request.META = self.data.get('META') or {}
+        fake_request.GET = self.data.get('GET') or {}
+        fake_request.POST = self.data.get('POST') or {}
+        fake_request.FILES = self.data.get('FILES') or {}
+        fake_request.COOKIES = self.data.get('COOKIES') or {}
         fake_request.url = self.url
         if self.url:
             fake_request.path_info = '/' + self.url.split('/', 3)[-1]
