@@ -9,9 +9,9 @@ class BaseEvent(object):
         "Returns a unique identifier for this event class."
         return '.'.join([self.__class__.__module__, self.__class__.__name__])
 
-    def store(self, tags, data, date=None, time_spent=None):
+    def store(self, tags, data, date=None, time_spent=None, event_id=None):
         "Saves the event in the database."
-        event_id = self.get_id()
+        proc_id = self.get_id()
 
         if not date:
             date = datetime.datetime.now()
@@ -33,10 +33,11 @@ class BaseEvent(object):
         # XXX: We need some special handling for "data" as it shouldnt be part of the main hash??
 
         # TODO: this should be generated from the TypeProcessor
-        event_hash = hashlib.md5('|'.join(self.get_event_id(**data))).hexdigest()
+        event_hash = hashlib.md5('|'.join(k or '' for k in self.get_event_hash(**data))).hexdigest()
 
         event = Event.objects.create(
-            type=event_id,
+            pk=event_id,
+            type=proc_id,
             hash=event_hash,
             date=date,
             time_spent=time_spent,
@@ -48,7 +49,7 @@ class BaseEvent(object):
 
         # For each view that handles this event, we need to create a Group
         for view in conf.VIEWS.itervalues():
-            if view['event'] == event_id:
+            if view['event'] == proc_id:
                 # We only care about tags which are required for this view
 
                 event_tags = [(k, v) for k, v in tags if k in view.get('tags', [])]
@@ -66,11 +67,11 @@ class BaseEvent(object):
                     tc.incr('count')
 
                 group, created = Group.objects.get_or_create(
-                    type=event_id,
+                    type=proc_id,
                     hash=tags_hash + event_hash,
                     defaults={
                         'count': 1,
-                        'time_spent': time_spent,
+                        'time_spent': time_spent or 0,
                         'tags': tags,
                     }
                 )
@@ -92,7 +93,7 @@ class MessageEvent(BaseEvent):
 
     - msg_value: 'My message'
     """
-    def get_event_id(self, msg_value=None, **kwargs):
+    def get_event_hash(self, msg_value=None, **kwargs):
         return [msg_value]
 
 class ExceptionEvent(BaseEvent):
@@ -103,7 +104,7 @@ class ExceptionEvent(BaseEvent):
     - exc_type: 'module.ClassName'
     - exc_frames: [(line number, line text, filename, truncated locals)]
     """
-    def get_event_id(self, exc_value=None, exc_type=None, exc_frames=None, **kwargs):
+    def get_event_has(self, exc_value=None, exc_type=None, exc_frames=None, **kwargs):
         return [exc_value, exc_type]
 
 class SQLEvent(BaseEvent):
@@ -113,5 +114,5 @@ class SQLEvent(BaseEvent):
     - sql_value: 'SELECT * FROM table'
     - sql_engine: 'postgesql_psycopg2'
     """
-    def get_event_id(self, sql_value=None, sql_engine=None, **kwargs):
+    def get_event_hash(self, sql_value=None, sql_engine=None, **kwargs):
         return [sql_value, sql_engine]

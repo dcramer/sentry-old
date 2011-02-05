@@ -10,6 +10,9 @@ class SentryTest(unittest2.TestCase):
         # TODO: this should change schemas, or something
         backend.conn.flushdb()
 
+    def test_create_from_text(self):
+        client.create_from_text('foo')
+
     # Some quick ugly high level tests to get shit working fast
     def test_create(self):
         # redis is so blazing fast that we have to artificially inflate dates

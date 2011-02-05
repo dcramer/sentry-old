@@ -21,7 +21,7 @@ class SentryClient(object):
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('sentry.errors')
 
-    def create(self, type, tags, data={}, date=None, time_spent=None):
+    def create(self, type, tags=[], data={}, date=None, time_spent=None, event_id=None):
         from sentry.models import Event, Group, Tag, TagCount
 
         if not date:
@@ -31,46 +31,30 @@ class SentryClient(object):
 
         event_processor = getattr(__import__(module, {}, {}, [class_name], -1), class_name)
 
-        return event_processor().store(tags, data, date, time_spent)
+        return event_processor().store(tags, data, date, time_spent, event_id)
 
-    def process(self, **kwargs):
+    def process(self, type, tags=[], date=None, time_spent=None, request=None, **data):
         "Processes the message before passing it on to the server"
         from sentry.helpers import get_filters
 
-        if kwargs.get('data'):
-            # Ensure we're not changing the original data which was passed
-            # to Sentry
-            kwargs['data'] = kwargs['data'].copy()
-
-        request = kwargs.pop('request', None)
         if request:
-            if not kwargs.get('data'):
-                kwargs['data'] = {}
-            kwargs['data'].update(dict(
-                META=request.META,
-                POST=request.POST,
-                GET=request.GET,
-                COOKIES=request.COOKIES,
+            data.update(dict(
+                s_meta=request.META,
+                s_post=request.POST,
+                s_get=request.GET,
+                s_cookies=request.COOKIES,
             ))
+            tags.append(('url', request.build_absolute_uri()))
 
-            if not kwargs.get('url'):
-                kwargs['url'] = request.build_absolute_uri()
-
-        kwargs.setdefault('level', logging.ERROR)
-        kwargs.setdefault('server_name', conf.NAME)
-
-        # save versions of all installed apps
-        if 'data' not in kwargs or '__sentry__' not in (kwargs['data'] or {}):
-            if kwargs.get('data') is None:
-                kwargs['data'] = {}
-            kwargs['data']['__sentry__'] = {}
+        tags.append(('server', conf.NAME))
 
         versions = get_versions()
-        kwargs['data']['__sentry__']['versions'] = versions
 
-        if kwargs.get('view'):
+        data['s_versions'] = versions
+
+        if data.get('s_view'):
             # get list of modules from right to left
-            parts = kwargs['view'].split('.')
+            parts = data['s_view'].split('.')
             module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
             version = None
             module = None
@@ -79,46 +63,42 @@ class SentryClient(object):
                     module = m
                     version = versions[m]
 
+            data['s_view'] = view
+
             # store our "best guess" for application version
             if version:
-                kwargs['data']['__sentry__'].update({
-                    'version': version,
-                    'module': module,
+                data.update({
+                    's_version': version,
+                    's_module': module,
                 })
 
-        if 'checksum' not in kwargs:
-            checksum = construct_checksum(**kwargs)
-        else:
-            checksum = kwargs['checksum']
-
         # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
-        if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
-            cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
-            added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
-            if not added:
-                try:
-                    thrash_count = cache.incr(cache_key)
-                except (KeyError, ValueError):
-                    # cache.incr can fail. Assume we aren't thrashing yet, and
-                    # if we are, hope that the next error has a successful
-                    # cache.incr call.
-                    thrash_count = 0
-                if thrash_count > conf.THRASHING_LIMIT:
-                    return
+        # if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
+        #     cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
+        #     added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
+        #     if not added:
+        #         try:
+        #             thrash_count = cache.incr(cache_key)
+        #         except (KeyError, ValueError):
+        #             # cache.incr can fail. Assume we aren't thrashing yet, and
+        #             # if we are, hope that the next error has a successful
+        #             # cache.incr call.
+        #             thrash_count = 0
+        #         if thrash_count > conf.THRASHING_LIMIT:
+        #             return
 
-        for filter_ in get_filters():
-            kwargs = filter_(None).process(kwargs) or kwargs
+        # for filter_ in get_filters():
+        #     kwargs = filter_(None).process(kwargs) or kwargs
 
         # create ID client-side so that it can be passed to application
-        message_id = uuid.uuid4().hex
-        kwargs['message_id'] = message_id
+        event_id = uuid.uuid4().hex
 
         # Make sure all data is coerced
-        kwargs = transform(kwargs)
+        data = transform(data)
 
-        self.send(**kwargs)
+        self.send(type=type, tags=tags, data=data, date=date, time_spent=time_spent, event_id=event_id)
 
-        return message_id
+        return event_id
 
     def send(self, **kwargs):
         "Sends the message to the server."
@@ -177,8 +157,10 @@ class SentryClient(object):
         """
         Creates an error log for from ``message``.
         """
+        kwargs['s_message'] = message
         return self.process(
-            message=message,
+            type='sentry.events.MessageEvent',
+            tags=[('level', 'error')],
             **kwargs
         )
 

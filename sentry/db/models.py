@@ -47,7 +47,12 @@ class Manager(object):
         return self.model(pk, **data)
 
     def create(self, **values):
-        pk = backend.add(self.model, **map_field_values(self.model, values))
+        pk = values.pop('pk', None)
+        if pk:
+            backend.set(self.model, pk, **map_field_values(self.model, values))
+        else:
+            pk = backend.add(self.model, **map_field_values(self.model, values))
+
         instance = self.model(pk, **values)
 
         for index in self.model._meta.indexes:

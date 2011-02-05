@@ -96,42 +96,33 @@ class SentryNexusModule(NexusModule):
             if uuid_re.match(query):
                 # Forward to message if it exists
                 try:
-                    message = Message.objects.get(message_id=query)
+                    message = Event.objects.get(query)
                 except Message.DoesNotExist:
                     pass
                 else:
                     return HttpResponseRedirect(message.get_absolute_url())
             message_list = self.get_search_query_set(query)
         else:
-            message_list = GroupedMessage.objects.extra(
-                select={
-                    'score': GroupedMessage.get_score_clause(),
-                }
-            )
-            if query:
-                # You really shouldnt be doing this
-                message_list = message_list.filter(
-                    Q(view__icontains=query) \
-                    | Q(message__icontains=query) \
-                    | Q(traceback__icontains=query)
-                )
+            message_list = Group.objects.all()
 
         sort = request.GET.get('sort')
-        if sort == 'date':
-            message_list = message_list.order_by('-last_seen')
-        elif sort == 'new':
-            message_list = message_list.order_by('-first_seen')
-        else:
-            sort = 'priority'
-            if not is_search:
-                message_list = message_list.order_by('-score', '-last_seen')
+        # if sort == 'date':
+        #     message_list = message_list.order_by('-last_seen')
+        # elif sort == 'new':
+        #     message_list = message_list.order_by('-first_seen')
+        # else:
+        #     sort = 'priority'
+        #     if not is_search:
+        #         message_list = message_list.order_by('-score', '-last_seen')
+
+        filters = []
 
         any_filter = False
-        for filter_ in filters:
-            if not filter_.is_set():
-                continue
-            any_filter = True
-            message_list = filter_.get_query_set(message_list)
+        # for filter_ in filters:
+        #     if not filter_.is_set():
+        #         continue
+        #     any_filter = True
+            # message_list = filter_.get_query_set(message_list)
 
         today = datetime.datetime.now()
 
