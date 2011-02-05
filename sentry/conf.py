@@ -13,18 +13,19 @@ DEBUG = getattr(settings, 'DEBUG', False) and not config.get('DEBUG', False)
 THRASHING_TIMEOUT = config.get('THRASHING_TIMEOUT', 60)
 THRASHING_LIMIT = config.get('THRASHING_LIMIT', 10)
 
-FILTERS = config.get('FILTERS', (
-    getattr(settings, 'HAYSTACK_SEARCH_ENGINE', None) and 'sentry.filters.SearchFilter' or None,
+# Sentry allows you to specify an alternative search backend for itself
+SEARCH_ENGINE = config.get('SEARCH_ENGINE', None)
+SEARCH_OPTIONS = config.get('SEARCH_OPTIONS', {})
+SEARCH_UPDATES = config.get('SEARCH_UPDATES', 'realtime')
+
+FILTERS = config.get('FILTERS', filter(None, (
+    SEARCH_ENGINE and 'sentry.filters.SearchFilter' or None,
     'sentry.filters.StatusFilter',
     'sentry.filters.LoggerFilter',
     'sentry.filters.LevelFilter',
     'sentry.filters.ServerNameFilter',
     'sentry.filters.SiteFilter',
-))
-
-# Sentry allows you to specify an alternative search backend for itself
-SEARCH_ENGINE = getattr(settings, 'SENTRY_SEARCH_ENGINE', None)
-SEARCH_OPTIONS = getattr(settings, 'SENTRY_SEARCH_OPTIONS', {})
+)))
 
 KEY = config.get('KEY', hashlib.md5(settings.SECRET_KEY).hexdigest())
 

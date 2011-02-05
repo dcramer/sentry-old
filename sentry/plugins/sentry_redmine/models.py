@@ -77,7 +77,7 @@ class CreateRedmineIssue(GroupActionProvider):
                     RedmineIssue.objects.create(group=group, issue_id=data['id'])
                     group.data['redmine'] = {'issue_id': data['id']}
                     group.save()
-                    return HttpResponseRedirect(reverse('sentry-group', args=[group.pk]))
+                    return HttpResponseRedirect(reverse('sentry:group', args=[group.pk]))
         else:
             description = 'Sentry Message: %s' % request.build_absolute_uri(group.get_absolute_url())
             description += '\n\n<pre>' + (group.traceback or group.message) + '</pre>'

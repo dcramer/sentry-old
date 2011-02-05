@@ -56,7 +56,7 @@ class MessageFeed(object):
         return '-datetime'
 
     def get_item_url(self, request, obj):
-        return reverse('sentry-group', args=[obj.group_id])
+        return reverse('sentry:group', args=[obj.group_id])
 
     def get_item_date(self, request, obj):
         return obj.datetime
@@ -79,7 +79,7 @@ class SummaryFeed(MessageFeed):
         return '-last_seen'
 
     def get_item_url(self, request, obj):
-        return reverse('sentry-group', args=[obj.pk])
+        return reverse('sentry:group', args=[obj.pk])
 
     def get_item_date(self, request, obj):
         return obj.last_seen

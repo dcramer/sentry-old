@@ -93,8 +93,6 @@ class Event(models.Model):
     """
     An individual event. It's processor (type) handles input and output, as well as
     group summarization.
-
-    Any field that isnt declared is assumed a text type.
     """
 
     # the hash of this event is defined by its processor (type)

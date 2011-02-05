@@ -35,7 +35,7 @@ class ActionProvider:
     __metaclass__ = PluginMount
 
     def __init__(self):
-        self.url = reverse('sentry-plugin-action', args=(self.slug,))
+        self.url = reverse('sentry:plugin-action', args=(self.slug,))
 
     def __call__(self, request):
         self.selected = request.path == self.url
@@ -53,7 +53,7 @@ class GroupActionProvider:
 
     @classmethod
     def get_url(cls, group_id):
-        return reverse('sentry-group-plugin-action', args=(group_id, cls.slug))
+        return reverse('sentry:group-plugin-action', args=(group_id, cls.slug))
 
     def __init__(self, group_id):
         self.url = self.__class__.get_url(group_id)

@@ -18,7 +18,7 @@ class mytest(test):
         # test.run(self, *args, **kwargs)
 
 setup(
-    name='django-sentry',
+    name='sentry',
     version='1.6.1',
     author='David Cramer',
     author_email='dcramer@gmail.com',
@@ -30,6 +30,7 @@ setup(
         'django-paging>=0.2.2',
         'django-indexer==0.2.1',
         'uuid',
+        'nexus>=0.1.2'
     ],
     test_suite = 'sentry.tests',
     include_package_data=True,
