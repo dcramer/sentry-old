@@ -32,7 +32,7 @@ class RedisBackend(SentryBackend):
         self.conn.hmset('metadata:%s:%s' % (self._get_schema_name(schema), pk), values)
 
     def get_meta(self, schema, pk):
-        self.conn.hgetall('metadata:%s:%s' % (self._get_schema_name(schema), pk))
+        return self.conn.hgetall('metadata:%s:%s' % (self._get_schema_name(schema), pk))
 
     ## Indexes using sorted sets
 

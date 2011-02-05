@@ -19,7 +19,7 @@ def with_priority(result_list, key='score'):
         if isinstance(result_list[0], dict):
             _get = lambda x, k: x[k]
         else:
-            _get = lambda x, k: getattr(x, k)
+            _get = lambda x, k: getattr(x, k, 0)
 
         min_, max_ = min([_get(r, key) for r in result_list]), max([_get(r, key) for r in result_list])
         mid = (max_ - min_) / 4
@@ -44,7 +44,7 @@ def num_digits(value):
 @register.filter
 def chart_data(group, max_days=90):
     hours = max_days*24
-    
+
     today = datetime.datetime.now().replace(microsecond=0, second=0, minute=0)
     min_date = today - datetime.timedelta(hours=hours)
 
@@ -84,7 +84,7 @@ def to_json(data):
 @register.simple_tag
 def sentry_version():
     import sentry
-    
+
     return sentry.VERSION
 
 @register.filter

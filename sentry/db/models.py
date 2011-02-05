@@ -82,6 +82,9 @@ class Manager(object):
             return
         backend.set_meta(self.model, pk, **map_field_values(self.model, values))
 
+    def get_meta(self, pk):
+        return backend.get_meta(self.model, pk)
+
     def add_to_index(self, pk, index, score):
         return backend.add_to_index(self.model, pk, index, score)
 
@@ -187,11 +190,19 @@ class Model(object):
     def set_meta(self, **values):
         self.objects.set_meta(self.pk, **values)
 
+    def get_meta(self):
+        return self.objects.get_meta(self.pk)
+
     def add_relation(self, instance, score):
         return backend.add_relation(self.__class__, self.pk, instance.__class__, instance.pk, score)
 
     def get_relations(self, model, offset=0, limit=100):
         return [model(pk, **data) for pk, data in backend.list_relations(self.__class__, self.pk, model, offset, limit)]
+
+    def _get_data(self):
+        return self.get_meta() or {}
+    data = property(_get_data)
+
 
 class Field(object):
     def __init__(self, default=None, **kwargs):

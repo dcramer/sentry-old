@@ -45,6 +45,8 @@ class BaseEvent(object):
         )
         event.set_meta(**data)
 
+        event_message = self.to_string(event)
+
         groups = []
 
         # For each view that handles this event, we need to create a Group
@@ -73,6 +75,7 @@ class BaseEvent(object):
                         'count': 1,
                         'time_spent': time_spent or 0,
                         'tags': tags,
+                        'message': event_message,
                     }
                 )
                 if not created:
@@ -95,6 +98,15 @@ class MessageEvent(BaseEvent):
     """
     def get_event_hash(self, msg_value=None, **kwargs):
         return [msg_value]
+
+    def to_string(self, event):
+        return event.data['msg_value']
+
+    def process(self, message, **data):
+        return {
+            'msg_value': message,
+        }
+
 
 class ExceptionEvent(BaseEvent):
     """

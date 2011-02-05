@@ -50,10 +50,10 @@ class SentryNexusModule(NexusModule):
 
             # Normal views
 
-            url(r'^group/(\d+)$', self.as_view(self.group), name='group'),
-            url(r'^group/(\d+)/messages$', self.as_view(self.group_message_list), name='group-messages'),
-            url(r'^group/(\d+)/messages/(\d+)$', self.as_view(self.group_message_details), name='group-message'),
-            url(r'^group/(\d+)/actions/([\w_-]+)', self.as_view(self.group_plugin_action), name='group-plugin-action'),
+            url(r'^group/([a-zA-Z0-9]{32})$', self.as_view(self.group), name='group'),
+            url(r'^group/([a-zA-Z0-9]{32})/messages$', self.as_view(self.group_message_list), name='group-messages'),
+            url(r'^group/([a-zA-Z0-9]{32})/messages/([a-zA-Z0-9]{32})$', self.as_view(self.group_message_details), name='group-message'),
+            url(r'^group/([a-zA-Z0-9]{32})/actions/([\w_-]+)', self.as_view(self.group_plugin_action), name='group-plugin-action'),
 
             url(r'^$', self.as_view(self.index), name='index'),
         )

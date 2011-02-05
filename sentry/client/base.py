@@ -122,6 +122,8 @@ class SentryClient(object):
         else:
             return self.create(**kwargs)
 
+    # TODO: move the following into some API for events
+
     def create_from_record(self, record, **kwargs):
         """
         Creates an error log for a ``logging`` module ``record`` instance.
@@ -157,7 +159,7 @@ class SentryClient(object):
         """
         Creates an error log for from ``message``.
         """
-        kwargs['s_message'] = message
+        kwargs['msg_value'] = message
         return self.process(
             type='sentry.events.MessageEvent',
             tags=[('level', 'error')],
