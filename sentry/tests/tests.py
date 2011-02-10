@@ -152,6 +152,8 @@ class SentryTest(unittest2.TestCase):
         except:
             pass
 
+        # ExceptionEvent pulls in sys.exc_info()
+        # by default
         event_id = store('ExceptionEvent')
 
         event = Event.objects.get(event_id)
