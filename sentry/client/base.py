@@ -2,20 +2,11 @@ from __future__ import absolute_import
 
 import datetime
 import logging
-import sys
-import traceback
+import simplejson
 import urllib2
-import uuid
-
-from django.core.cache import cache
-from django.template import TemplateSyntaxError
-from django.views.debug import ExceptionReporter
 
 from sentry import conf
-from sentry.db import backend
-from sentry.models import Event, Group, Tag, TagCount
-from sentry.helpers import construct_checksum, varmap, transform, get_installed_apps, urlread, force_unicode, \
-                           get_versions
+from sentry.helpers import construct_checksum, urlread, force_unicode
 
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
@@ -23,8 +14,6 @@ class SentryClient(object):
 
     def store(self, type, tags=[], data={}, date=None, time_spent=None, event_id=None):
         # TODO: this shouldn't be part of the client
-        from sentry.models import Event, Group, Tag, TagCount
-
         if not date:
             date = datetime.datetime.now()
 
@@ -39,20 +28,20 @@ class SentryClient(object):
         if conf.REMOTE_URL:
             for url in conf.REMOTE_URL:
                 data = {
-                    'data': base64.b64encode(pickle.dumps(kwargs).encode('zlib')),
+                    'data': simplejson.dumps(kwargs).encode('zlib'),
                     'key': conf.KEY,
                 }
                 try:
                     urlread(url, post=data, timeout=conf.REMOTE_TIMEOUT)
                 except urllib2.HTTPError, e:
                     body = e.read()
-                    logger.error('Unable to reach Sentry log server: %s (url: %%s, body: %%s)' % (e,), url, body,
+                    self.logger.error('Unable to reach Sentry log server: %s (url: %%s, body: %%s)' % (e,), url, body,
                                  exc_info=True, extra={'data':{'body': body, 'remote_url': url}})
-                    logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
+                    self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
                 except urllib2.URLError, e:
-                    logger.error('Unable to reach Sentry log server: %s (url: %%s)' % (e,), url,
+                    self.logger.error('Unable to reach Sentry log server: %s (url: %%s)' % (e,), url,
                                  exc_info=True, extra={'data':{'remote_url': url}})
-                    logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
+                    self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
         else:
             return self.store(**kwargs)
 
