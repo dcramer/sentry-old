@@ -3,6 +3,7 @@ Sentry
 ~~~~~~
 
 TODO: Can we merge data + tags?
+      - we need the answer to this to be yes
       - tags are generally more generic, could add extra overhead
         unless we specify which keys are going to be filterable
       - do we prefix them with tag_<foo>?
@@ -55,7 +56,7 @@ for all combinations of tags on each event.
 Several example use cases for tags:
 
 - level = 'warning'
-- func = 'module.function_name'
+- function = 'module.function_name'
 - url = 'http://...'
 - server = 'localhost'
 - project = 'my project name'
