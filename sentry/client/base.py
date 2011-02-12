@@ -45,9 +45,8 @@ class SentryClient(object):
         else:
             return self.store(**kwargs)
 
-    # TODO: move the following into some API for events
-
     def create_from_record(self, record, **kwargs):
+        # TODO: this should be moved into a generic LogHandlerProcessor
         """
         Creates an error log for a ``logging`` module ``record`` instance.
         """
