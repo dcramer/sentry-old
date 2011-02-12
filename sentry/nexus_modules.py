@@ -300,6 +300,29 @@ class SentryNexusModule(NexusModule):
         }, request)
 
     def store(self, request):
+        """
+        API method to store a new event. All values must be specified as a ``data``
+        parameter, which must be sent as a JSON hash. The ``data`` parameter may
+        optionally be gzipped.
+        
+        The value of ``SENTRY_KEY`` must be sent as ``key``.
+        
+        The following keys are required:
+        
+        - type:
+           - path.to.event.handler
+        
+        The following keys are optional:
+        
+        - date (default: now)
+        - count (default: 0)
+        - duration (default: 0)
+        - tags (list):
+          - (key, value)
+        - data (dict):
+          - key: value
+        """
+        
         key = request.POST.get('key')
         if key != conf.KEY:
             return HttpResponseForbidden('Invalid credentials')

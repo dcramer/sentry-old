@@ -3,7 +3,6 @@ from django.conf import settings
 import hashlib
 import logging
 import socket
-import warnings
 
 config = getattr(settings, 'SENTRY_CONFIG', {})
 

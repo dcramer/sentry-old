@@ -2,6 +2,20 @@
 Sentry
 ~~~~~~
 
+TODO: Can we merge data + tags?
+      - tags are generally more generic, could add extra overhead
+        unless we specify which keys are going to be filterable
+      - do we prefix them with tag_<foo>?
+      - do we continue prefixing sentry builtins with s_?
+      - do we just prefix sentry builtins with _?
+
+TODO: How do we specify grouping functions?
+      - we need to be able to say "show exceptions by url"
+        and "show exceptions by function"
+      - behavior needs to exist that we can specify some kind of hashing
+        function for an event, and the processor should define a default
+      - this should replace get_event_hash
+
 Sentry 2 stores events based on tag groups. These groups are defined at
 runtime so that future messages can be stored in an optimized pattern
 for quick retrieval and aggregation.
