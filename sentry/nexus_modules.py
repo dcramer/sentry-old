@@ -1,9 +1,4 @@
-import base64
 import logging
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 import datetime
 import nexus
 import re
@@ -301,12 +296,15 @@ class SentryNexusModule(NexusModule):
 
     def store(self, request):
         """
+        TODO: this isnt going to play nice with binary gzip data
+        TODO: this should actually be part of some generic Nexus API solution
+        
         API method to store a new event. All values must be specified as a ``data``
         parameter, which must be sent as a JSON hash. The ``data`` parameter may
         optionally be gzipped.
         
         The value of ``SENTRY_KEY`` must be sent as ``key``.
-        
+
         The following keys are required:
         
         - type:
@@ -315,12 +313,12 @@ class SentryNexusModule(NexusModule):
         The following keys are optional:
         
         - date (default: now)
-        - count (default: 0)
-        - duration (default: 0)
+        - time_spent (default: 0)
         - tags (list):
           - (key, value)
         - data (dict):
           - key: value
+        - event_id: (default: uuid4())
         """
         
         key = request.POST.get('key')
@@ -330,19 +328,20 @@ class SentryNexusModule(NexusModule):
         data = request.POST.get('data')
         if not data:
             return HttpResponseForbidden('Missing data')
-        try:
+        if not data.startswith('{'):
             try:
-                data = pickle.loads(base64.b64decode(data).decode('zlib'))
+                data = data.decode('zlib')
             except zlib.error:
-                data = pickle.loads(base64.b64decode(data))
-        except Exception, e:
-            logger = logging.getLogger('sentry.server')
-            # This error should be caught as it suggests that there's a
-            # bug somewhere in the Sentry code.
-            logger.exception('Bad data received')
-            return HttpResponseForbidden('Bad data')
+                logger = logging.getLogger('sentry.server')
+                # This error should be caught as it suggests that there's a
+                # bug somewhere in the Sentry code.
+                logger.exception('Bad data received')
+                return HttpResponseForbidden('Data must be either gzipped or sent as raw JSON.')
 
-        GroupedMessage.objects.from_kwargs(**data)
+        if 'type' not in data:
+            return HttpResponseForbidden('Missing required attribute in data: type')
+
+        store(data.pop('type'), data)
 
         return HttpResponse()
 

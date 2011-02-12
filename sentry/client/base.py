@@ -22,6 +22,7 @@ class SentryClient(object):
         self.logger = logging.getLogger('sentry.errors')
 
     def store(self, type, tags=[], data={}, date=None, time_spent=None, event_id=None):
+        # TODO: this shouldn't be part of the client
         from sentry.models import Event, Group, Tag, TagCount
 
         if not date:
