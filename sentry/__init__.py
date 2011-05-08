@@ -102,4 +102,4 @@ app.config.from_envvar('SENTRY_SETTINGS', silent=True)
 # Register views
 app.register_module(frontend)
 
-db = get_backend(app)
+app.db = get_backend(app)
