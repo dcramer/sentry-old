@@ -20,7 +20,7 @@
         <dt>Last Seen:</dt>
         <dd>{{ group.last_seen|timesince }}</dd>
         {% for k, v in group.tags %}
-            <dt>{{ k }}</dt>
+            <dt>{{ k|title }}</dt>
             <dd>{{ v }}</dd>
         {% endfor %}
     </dl>
