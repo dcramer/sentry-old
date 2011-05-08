@@ -15,16 +15,14 @@
     </ul>
     <h2>Meta</h2>
     <dl class="flat">
-        <dt>Logger:</dt>
-        <dd><a href="{{ url_for('index') }}?logger={{ group.logger }}">{{ group.logger }}</a></dd>
-        <dt>Level:</dt>
-        <dd><a href="{{ url_for('index') }}?level={{ group.level }}">{{ group.get_level_display }}</a></dd>
-        <dt>Status:</dt>
-        <dd>{{ group.get_status_display|title }}</dd>
         <dt>First Seen:</dt>
         <dd>{{ group.first_seen|timesince }}</dd>
         <dt>Last Seen:</dt>
         <dd>{{ group.last_seen|timesince }}</dd>
+        {% for k, v in group.tags %}
+            <dt>{{ k }}</dt>
+            <dd>{{ v }}</dd>
+        {% endfor %}
     </dl>
         
     {% for html in group|get_widgets() %}
