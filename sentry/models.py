@@ -1,22 +1,16 @@
 from __future__ import absolute_import
 
-import base64
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 try:
     import cmath as math
 except ImportError:
     import math
 import datetime
 import hashlib
-import logging
 
-from sentry.conf import settings
-from sentry.db import models, backend
-from sentry.utils import cached_property, construct_checksum, transform, get_filters, \
-                         MockRequest
+from flask import current_app as app
+
+from sentry.db import models
+from sentry.utils import cached_property, MockRequest
 
 class Tag(models.Model):
     """
@@ -103,7 +97,7 @@ class Event(models.Model):
         ordering = 'date'
 
     def mail_admins(self, request=None, fail_silently=True):
-        if not settings.ADMINS:
+        if not app.config['ADMINS']:
             return
 
         from django.core.mail import send_mail
@@ -124,7 +118,7 @@ class Event(models.Model):
         if request:
             link = request.build_absolute_url(self.get_absolute_url())
         else:
-            link = '%s%s' % (settings.URL_PREFIX, self.get_absolute_url())
+            link = '%s%s' % (app.config['URL_PREFIX'], self.get_absolute_url())
 
         body = render_to_string('sentry/emails/error.txt', {
             'request_repr': request_repr,
@@ -135,7 +129,7 @@ class Event(models.Model):
         })
 
         send_mail(subject, body,
-                  django_settings.SERVER_EMAIL, settings.ADMINS,
+                  app.config['SERVER_EMAIL'], app.config['ADMINS'],
                   fail_silently=fail_silently)
 
     def get_version(self):

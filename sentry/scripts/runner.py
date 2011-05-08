@@ -6,9 +6,8 @@ import sys
 
 from daemon.daemon import DaemonContext
 from daemon.runner import DaemonRunner, make_pidlockfile
-from django.conf import settings as django_settings
-from django.core.management import call_command
 from eventlet import wsgi
+from flask import current_app as app
 from optparse import OptionParser
 from sentry import VERSION
 from sentry.wsgi import application
@@ -19,21 +18,19 @@ class SentryServer(DaemonRunner):
 
     def __init__(self, host=None, port=None, pidfile=None,
                  logfile=None):
-        from sentry.conf import settings
-
         if not logfile:
-            logfile = settings.WEB_LOG_FILE
+            logfile = app.config['WEB_LOG_FILE']
 
         self.daemon_context = DaemonContext()
         self.daemon_context.stdout = open(logfile, 'w+')
         self.daemon_context.stderr = open(logfile, 'w+', buffering=0)
 
-        self.pidfile = make_pidlockfile(pidfile or settings.WEB_PID_FILE, self.pidfile_timeout)
+        self.pidfile = make_pidlockfile(pidfile or app.config['WEB_PID_FILE'], self.pidfile_timeout)
 
         self.daemon_context.pidfile = self.pidfile
 
-        self.host = host or settings.WEB_HOST
-        self.port = port or settings.WEB_PORT
+        self.host = host or app.config['WEB_HOST']
+        self.port = port or app.config['WEB_PORT']
 
         # HACK: set app to self so self.app.run() works
         self.app = self
@@ -70,12 +67,13 @@ def cleanup(days=30, logger=None, site=None, server=None):
     qs.delete()
 
 def upgrade():
-    from sentry.conf import settings
-    
-    call_command('syncdb', database=settings.DATABASE_USING or 'default', interactive=False)
-
-    if 'south' in django_settings.INSTALLED_APPS:
-        call_command('migrate', database=settings.DATABASE_USING or 'default', interactive=False)
+    pass
+    # from sentry.conf import settings
+    # 
+    # call_command('syncdb', database=settings.DATABASE_USING or 'default', interactive=False)
+    # 
+    # if 'south' in django_settings.INSTALLED_APPS:
+    #     call_command('migrate', database=settings.DATABASE_USING or 'default', interactive=False)
 
 def main():
     command_list = ('start', 'stop', 'restart', 'cleanup', 'upgrade')
@@ -116,8 +114,8 @@ def main():
 
     # TODO: we should attempt to discover settings modules
 
-    if not django_settings.configured:
-        os.environ['DJANGO_SETTINGS_MODULE'] = 'sentry.conf.server'
+    # if not django_settings.configured:
+    #     os.environ['DJANGO_SETTINGS_MODULE'] = 'sentry.conf.server'
 
     if args[0] == 'upgrade':
         upgrade()

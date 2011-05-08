@@ -87,3 +87,9 @@ try:
         .get_distribution('django-sentry').version
 except Exception, e:
     VERSION = 'unknown'
+
+    from flask import Flask
+
+app = Flask(__name__)
+app.config.from_object('sentry.conf.SentryConfig')
+app.config.from_envvar('SENTRY_SETTINGS', silent=True)

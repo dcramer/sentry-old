@@ -7,8 +7,9 @@ import simplejson
 import time
 import urllib2
 
+from flask import current_app as app
+
 import sentry
-from sentry.conf import settings
 from sentry.helpers import construct_checksum, force_unicode, get_signature, \
                            get_auth_header
 
@@ -30,15 +31,15 @@ class SentryClient(object):
     def send_remote(self, url, data, headers={}):
         req = urllib2.Request(url, headers=headers)
         try:
-            response = urllib2.urlopen(req, data, settings.REMOTE_TIMEOUT).read()
+            response = urllib2.urlopen(req, data, app.config['REMOTE_TIMEOUT']).read()
         except:
             response = urllib2.urlopen(req, data).read()
         return response
 
     def send(self, **kwargs):
         "Sends the message to the server."
-        if settings.REMOTE_URL:
-            for url in settings.REMOTE_URL:
+        if app.config['REMOTE_URL']:
+            for url in app.config['REMOTE_URL']:
                 message = base64.b64encode(simplejson.dumps(kwargs).encode('zlib'))
                 timestamp = time.time()
                 signature = get_signature(message, timestamp)
@@ -74,7 +75,7 @@ class SentryClient(object):
             'logger': record.name,
             'level': record.levelno,
             'message': force_unicode(record.msg),
-            'server_name': settings.NAME,
+            'server_name': app.config['NAME'],
         })
 
         # construct the checksum with the unparsed message

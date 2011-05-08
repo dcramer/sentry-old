@@ -1,3 +1,4 @@
+import hashlib
 import hmac
 import logging
 import sys
@@ -6,13 +7,10 @@ import warnings
 from pprint import pformat
 from types import ClassType, TypeType
 
-import django
-from django.conf import settings as django_settings
-from django.utils.encoding import force_unicode
-from django.utils.hashcompat import md5_constructor, sha_constructor
+from flask import current_app as app
 
 import sentry
-from sentry.conf import settings
+from sentry.utils.encoding import force_unicode
 
 _FILTER_CACHE = None
 def get_filters():
@@ -21,7 +19,7 @@ def get_filters():
     if _FILTER_CACHE is None:
         
         filters = []
-        for filter_ in settings.FILTERS:
+        for filter_ in app.config['FILTERS']:
             if filter_.endswith('sentry.filters.SearchFilter'):
                 continue
             module_name, class_name = filter_.rsplit('.', 1)
@@ -37,17 +35,8 @@ def get_filters():
     for f in _FILTER_CACHE:
         yield f
 
-def get_db_engine(alias='default'):
-    has_multidb = django.VERSION >= (1, 2)
-    if has_multidb:
-        value = django_settings.DATABASES[alias]['ENGINE']
-    else:
-        assert alias == 'default', 'You cannot fetch a database engine other than the default on Django < 1.2'
-        value = django_settings.DATABASE_ENGINE
-    return value.rsplit('.', 1)[-1]
-
 def construct_checksum(level=logging.ERROR, class_name='', traceback='', message='', **kwargs):
-    checksum = md5_constructor(str(level))
+    checksum = hashlib.md5(str(level))
     checksum.update(class_name or '')
     if traceback:
         traceback = '\n'.join(traceback.split('\n')[:-3])
@@ -128,15 +117,6 @@ def to_unicode(value):
             value = '(Error decoding value)'
     return value
 
-def get_installed_apps():
-    """
-    Generate a list of modules in settings.INSTALLED_APPS.
-    """
-    out = set()
-    for app in django_settings.INSTALLED_APPS:
-        out.add(app)
-    return out
-
 class _Missing(object):
 
     def __repr__(self):
@@ -181,8 +161,7 @@ class cached_property(object):
 
     def __init__(self, func, name=None, doc=None, writeable=False):
         if writeable:
-            from warnings import warn
-            warn(DeprecationWarning('the writeable argument to the '
+            warnings.warn(DeprecationWarning('the writeable argument to the '
                                     'cached property is a noop since 0.6 '
                                     'because the property is writeable '
                                     'by default for performance reasons'))
@@ -202,9 +181,7 @@ class cached_property(object):
         return value
 
 def get_versions(module_list=None):
-    if not module_list:
-        module_list = django_settings.INSTALLED_APPS + ['django']
-
+    # TODO:
     ext_module_list = set()
     for m in module_list:
         parts = m.split('.')
@@ -233,13 +210,13 @@ def get_versions(module_list=None):
 
 def shorten(var):
     var = transform(var)
-    if isinstance(var, basestring) and len(var) > settings.MAX_LENGTH_STRING:
-        var = var[:settings.MAX_LENGTH_STRING] + '...'
-    elif isinstance(var, (list, tuple, set, frozenset)) and len(var) > settings.MAX_LENGTH_LIST:
+    if isinstance(var, basestring) and len(var) > app.config['MAX_LENGTH_STRING']:
+        var = var[:app.config['MAX_LENGTH_STRING']] + '...'
+    elif isinstance(var, (list, tuple, set, frozenset)) and len(var) > app.config['MAX_LENGTH_LIST']:
         # TODO: we should write a real API for storing some metadata with vars when
         # we get around to doing ref storage
         # TODO: when we finish the above, we should also implement this for dicts
-        var = list(var)[:settings.MAX_LENGTH_LIST] + ['...', '(%d more elements)' % (len(var) - settings.MAX_LENGTH_LIST,)]
+        var = list(var)[:app.config['MAX_LENGTH_LIST']] + ['...', '(%d more elements)' % (len(var) - app.config['MAX_LENGTH_LIST'],)]
     return var
 
 def is_float(var):
@@ -250,7 +227,7 @@ def is_float(var):
     return True
 
 def get_signature(message, timestamp):
-    return hmac.new(settings.KEY, '%s %s' % (timestamp, message), sha_constructor).hexdigest()
+    return hmac.new(app.config['KEY'], '%s %s' % (timestamp, message), hashlib.sha1).hexdigest()
 
 def get_auth_header(signature, timestamp, client):
     return 'Sentry sentry_signature=%s, sentry_timestamp=%s, sentry_client=%s' % (
