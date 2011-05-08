@@ -4,18 +4,18 @@
         <meta http-equiv="content-type" content="text/html; charset=utf-8"> 
         <meta name="robots" content="NONE,NOARCHIVE">
         <link href="http{% if request.is_secure %}s{% endif %}://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:light,regular&amp;subset=latin" rel="stylesheet" type="text/css">
-        <link href="{{ url_for('static_media', path="styles/global.css") }}" rel="stylesheet" type="text/css"/>
-        <link href="{{ url_for('static_media', path="images/sentry.png") }}" rel="shortcut icon"/>
+        <link href="{{ url_for('static', filename="styles/global.css") }}" rel="stylesheet" type="text/css"/>
+        <link href="{{ url_for('static', filename="images/sentry.png") }}" rel="shortcut icon"/>
         <title>{% block title %}Sentry{% endblock %}</title> 
-        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/jquery.js") }}"></script>
-        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/jquery.animate-colors-min.js") }}"></script>
-        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/highcharts.js") }}" ></script>
-        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/global.js") }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename="scripts/jquery.js") }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename="scripts/jquery.animate-colors-min.js") }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename="scripts/highcharts.js") }}" ></script>
+        <script type="text/javascript" src="{{ url_for('static', filename="scripts/global.js") }}"></script>
         <script type="text/javascript">
         Sentry.config({
-            mediaUrl: '{{ url_for('static_media', path='') }}',
+            mediaUrl: '{{ url_for('static', filename='') }}',
             apiUrl: '{{ url_for('ajax_handler') }}',
-            defaultImage: '{{ url_for('static_media', path='images/sentry.png') }}'
+            defaultImage: '{{ url_for('static', filename='images/sentry.png') }}'
         });
         {% if has_realtime %}
         Sentry.realtime.enable();
@@ -27,7 +27,7 @@
         {% block body %}
         <div id="header"> 
             <div class="container">
-                <h1><a href="{{ url_for('index') }}"><img src="{{ url_for('static_media', path="images/sentry.png") }}" border="0" width="32"/>Sentry</a></h1>
+                <h1><a href="{{ url_for('index') }}"><img src="{{ url_for('static', filename="images/sentry.png") }}" border="0" width="32"/>Sentry</a></h1>
                 <h2>{% block heading %}{{ gettext('Dashboard') }}{% endblock %}</h2>
                 {% block search %}
                     <form id="search" method="GET" action="{{ url_for('search') }}">
