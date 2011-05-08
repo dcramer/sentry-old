@@ -12,7 +12,9 @@ from sentry.models import TagCount, Tag, Group, Event
 
 def store(type, *args, **kwargs):
     proc = globals()[type]()
-    data = proc.handle(*args, **kwargs)
+    data = {
+        '__event__': proc.handle(*args, **kwargs),
+    }
     result = proc.process(**data)
     return result
 
@@ -57,7 +59,7 @@ class BaseEvent(object):
         )
         event.set_meta(**data)
 
-        event_message = self.to_string(event)
+        event_message = self.to_string(event, data.get('__event__'))
 
         groups = []
 
@@ -94,7 +96,8 @@ class BaseEvent(object):
                     group.incr('count')
                     if time_spent:
                         group.incr('time_spent', time_spent)
-                group.update(last_seen=event.date)
+
+                group.update(last_seen=event.date, score=group.get_score())
 
                 group.add_relation(event, date.strftime('%s.%m'))
 
@@ -117,11 +120,13 @@ class BaseEvent(object):
 
         versions = get_versions()
 
-        data['s_versions'] = versions
+        data['__sentry__'] = {}
 
-        if data.get('s_view'):
+        data['__sentry__']['versions'] = versions
+
+        if data['__sentry__'].get('view'):
             # get list of modules from right to left
-            parts = data['s_view'].split('.')
+            parts = data['__sentry__']['view'].split('.')
             module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
             version = None
             module = None
@@ -130,13 +135,11 @@ class BaseEvent(object):
                     module = m
                     version = versions[m]
 
-            # data['s_view'] = view
-
             # store our "best guess" for application version
             if version:
-                data.update({
-                    's_version': version,
-                    's_module': module,
+                data['__sentry__'].update({
+                    'version': version,
+                    'module': module,
                 })
 
         # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
@@ -176,8 +179,8 @@ class MessageEvent(BaseEvent):
     def get_event_hash(self, msg_value=None, **kwargs):
         return [msg_value]
 
-    def to_string(self, event):
-        return event.data['msg_value']
+    def to_string(self, event, data):
+        return data['msg_value']
 
     def handle(self, message):
         return {
@@ -196,8 +199,8 @@ class ExceptionEvent(BaseEvent):
     def get_event_hash(self, exc_value=None, exc_type=None, exc_frames=None, **kwargs):
         return [exc_value, exc_type]
 
-    def to_string(self, event):
-        return '%s: %s' % (event.data['exc_type'], event.data['exc_value'])
+    def to_string(self, event, data):
+        return '%s: %s' % (data['exc_type'], data['exc_value'])
 
     def handle(self, exc_info=None):
         # TODO: remove Django specifics
@@ -338,7 +341,8 @@ class ExceptionEvent(BaseEvent):
                     'module': module_name,
                     'function': function,
                     'lineno': lineno + 1,
-                    'vars': tb.tb_frame.f_locals.items(),
+                    # TODO: vars need to be references
+                    'vars': tb.tb_frame.f_locals,
                     'pre_context': pre_context,
                     'context_line': context_line,
                     'post_context': post_context,
@@ -347,11 +351,11 @@ class ExceptionEvent(BaseEvent):
             tb = tb.tb_next
         return frames
 
-    def to_html(self, event):
+    def to_html(self, event, data):
         return render_template('sentry/partial/events/exception.html', **{
-            'exception_value': event.data['exc_value'],
-            'exception_type': event.data['exc_type'],
-            'frames': event.data['exc_frames'],
+            'exception_value': data['exc_value'],
+            'exception_type': data['exc_type'],
+            'frames': data['exc_frames'],
         })
 
 class SQLEvent(BaseEvent):

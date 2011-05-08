@@ -1,6 +1,7 @@
 # Inspired by Django's models
 
 import datetime
+import simplejson
 
 try:
     import cPickle as pickle
@@ -9,14 +10,22 @@ except ImportError:
 
 from sentry import app
 
-def map_field_values(model, values):
+def to_db(model, values):
     result = {}
     for k, v in values.iteritems():
         field = model._meta.fields.get(k)
         if field:
             v = field.to_db(v)
+        else:
+            v = simplejson.dumps(v)
         result[k] = v
     return result
+
+class DoesNotExist(Exception):
+    pass
+
+class DuplicateKeyError(Exception):
+    pass
 
 class ManagerDescriptor(object):
     def __init__(self, manager):
@@ -28,9 +37,9 @@ class ManagerDescriptor(object):
         return self.manager
 
 class QuerySet(object):
-    def __init__(self, model, sort_by=None):
+    def __init__(self, model, order_by=None):
         self.model = model
-        self.index = sort_by or self.model._meta.ordering
+        self.index = order_by or self.model._meta.ordering
     
     def __getitem__(self, key):
         is_slice = isinstance(key, slice)
@@ -60,6 +69,14 @@ class QuerySet(object):
             return results
         return results[0]
 
+    def __len__(self):
+        if self.index.startswith('-'):
+            index = self.index[1:]
+        else:
+            index = self.index
+        
+        return app.db.count(self.model, index)
+
     def __iter__(self):
         for r in self[0:-1]:
             yield r
@@ -83,21 +100,23 @@ class Manager(object):
 
     def get(self, pk):
         data = app.db.get(self.model, pk)
+        if data == {}:
+            raise self.model.DoesNotExist
         return self.model(pk, **data)
 
     def create(self, **values):
         pk = values.pop('pk', None)
         if pk:
-            app.db.set(self.model, pk, **map_field_values(self.model, values))
+            app.db.set(self.model, pk)
         else:
-            pk = app.db.add(self.model, **map_field_values(self.model, values))
+            pk = app.db.add(self.model)
 
         instance = self.model(pk, **values)
+        instance.save()
 
         for index in self.model._meta.indexes:
-            if index in values:
-                value = getattr(instance, index)
-                self.add_to_index(pk, index, value)
+            value = getattr(instance, index, 0.0)
+            self.add_to_index(pk, index, value)
 
         ordering = self.model._meta.ordering
         if ordering == 'default':
@@ -123,22 +142,21 @@ class Manager(object):
         app.db.delete(self.model, pk)
 
     def update(self, pk, **values):
-        result = app.db.set(self.model, pk, **map_field_values(self.model, values))
+        result = app.db.set(self.model, pk, **to_db(self.model, values))
 
         for index in self.model._meta.indexes:
             if index in values:
-                value = values[index]
-                self.add_to_index(pk, index, value)
+                self.add_to_index(pk, index, values[index])
 
         return result
 
     def set_meta(self, pk, **values):
         if not values:
             return
-        app.db.set_meta(self.model, pk, **map_field_values(self.model, values))
+        app.db.set_meta(self.model, pk, **to_db(self.model, values))
 
     def get_meta(self, pk):
-        return app.db.get_meta(self.model, pk)
+        return dict((k, simplejson.loads(v)) for k, v in app.db.get_meta(self.model, pk).iteritems())
 
     def remove_from_index(self, pk, index):
         return app.db.remove_from_index(self.model, pk, index)
@@ -149,7 +167,7 @@ class Manager(object):
     def get_or_create(self, defaults={}, **index):
         # return (instance, created)
 
-        pk = app.db.get_by_cindex(self.model, **map_field_values(self.model, index))
+        pk = app.db.get_by_cindex(self.model, **to_db(self.model, index))
         if pk:
             return self.get(pk), False
 
@@ -158,7 +176,7 @@ class Manager(object):
 
         inst = self.create(**defaults)
 
-        app.db.add_to_cindex(self.model, inst.pk, **map_field_values(self.model, index))
+        app.db.add_to_cindex(self.model, inst.pk, **to_db(self.model, index))
 
         return inst, True
 
@@ -179,7 +197,7 @@ class Options(object):
         default_order = meta.__dict__.get('ordering')
         self.ordering = default_order or 'default'
         self.indexes = list(meta.__dict__.get('indexes', []))
-        if default_order:
+        if default_order and default_order not in self.indexes:
             self.indexes.append(default_order)
 
 class ModelDescriptor(type):
@@ -211,6 +229,9 @@ class ModelDescriptor(type):
 class Model(object):
     __metaclass__ = ModelDescriptor
 
+    DoesNotExist = DoesNotExist
+    DuplicateKeyError = DuplicateKeyError
+
     def __init__(self, pk=None, **kwargs):
         self.pk = pk
         for attname, field in self._meta.fields.iteritems():
@@ -239,10 +260,20 @@ class Model(object):
     def __unicode__(self):
         return self.pk
 
+    def before_save(self, *args, **kwargs):
+        pass
+
     def incr(self, key, amount=1):
         result = app.db.incr(self.__class__, self.pk, key, amount)
+        if key in self._meta.indexes:
+            self.objects.add_to_index(self.pk, key, result)
         setattr(self, key, result)
         return result
+
+    def save(self):
+        self.before_save()
+        values = dict((name, getattr(self, name)) for name in self._meta.fields.iterkeys())
+        self.objects.update(self.pk, **values)
 
     def update(self, **values):
         self.objects.update(self.pk, **values)
@@ -264,8 +295,8 @@ class Model(object):
         # add parent relation
         app.db.add_relation(instance.__class__, instance.pk, self.__class__, self.pk, score)
 
-    def get_relations(self, model, offset=0, limit=100):
-        return [model(pk, **data) for pk, data in app.db.list_relations(self.__class__, self.pk, model, offset, limit)]
+    def get_relations(self, model, offset=0, limit=100, desc=True):
+        return [model(pk, **data) for pk, data in app.db.list_relations(self.__class__, self.pk, model, offset, limit, desc)]
 
     def _get_data(self):
         return self.get_meta() or {}
@@ -309,6 +340,14 @@ class Integer(Field):
             value = int(value)
         else:
             value = 0
+        return value
+
+class Float(Field):
+    def to_python(self, value=None):
+        if value:
+            value = float(value)
+        else:
+            value = 0.0
         return value
 
 class DateTime(Field):

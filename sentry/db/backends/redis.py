@@ -14,7 +14,8 @@ class RedisBackend(SentryBackend):
     def add(self, schema, **values):
         # generates a pk and sets the values
         pk = self.generate_key(schema)
-        self.set(schema, pk, **values)
+        if values:
+            self.set(schema, pk, **values)
         return pk
 
     def delete(self, schema, pk):
@@ -22,7 +23,8 @@ class RedisBackend(SentryBackend):
         self.conn.delete('metadata:%s:%s' % (self._get_schema_name(schema), pk))
 
     def set(self, schema, pk, **values):
-        self.conn.hmset('data:%s:%s' % (self._get_schema_name(schema), pk), values)
+        if values:
+            self.conn.hmset('data:%s:%s' % (self._get_schema_name(schema), pk), values)
 
     def get(self, schema, pk):
         return self.conn.hgetall('data:%s:%s' % (self._get_schema_name(schema), pk))
@@ -39,6 +41,10 @@ class RedisBackend(SentryBackend):
         return self.conn.hgetall('metadata:%s:%s' % (self._get_schema_name(schema), pk))
 
     ## Indexes using sorted sets
+
+    def count(self, schema, index='default'):
+        schema = self._get_schema_name(schema)
+        return self.conn.zcard('index:%s:%s' % (schema, index))
 
     def list(self, schema, index='default', offset=0, limit=0, desc=False):
         schema = self._get_schema_name(schema)
@@ -62,7 +68,12 @@ class RedisBackend(SentryBackend):
         # XXX: this is O(n)+1, ugh
         to_schema = self._get_schema_name(to_schema)
 
-        pk_set = self.conn.zrange('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, to_schema), start=offset, end=offset+limit, desc=desc)
+        if desc:
+            func = self.conn.zrevrange
+        else:
+            func = self.conn.zrange
+
+        pk_set = func('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, to_schema), start=offset, num=offset+limit)
         return [(pk, self.conn.hgetall('data:%s:%s' % (to_schema, pk))) for pk in pk_set]
 
     def add_to_index(self, schema, pk, index, score):
@@ -72,6 +83,7 @@ class RedisBackend(SentryBackend):
         #        number of results that we want.
         if isinstance(score, datetime.datetime):
             score = score.strftime('%s.%m')
+        print schema, index, pk, score
         self.conn.zadd('index:%s:%s' % (self._get_schema_name(schema), index), pk, float(score))
 
     def remove_from_index(self, schema, pk, index):

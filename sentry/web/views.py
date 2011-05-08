@@ -105,28 +105,16 @@ def index():
     query = request.args.get('content')
     is_search = query
 
-    if is_search:
-        if uuid_re.match(query):
-            # Forward to message if it exists
-            try:
-                message = Event.objects.get(query)
-            except Message.DoesNotExist:
-                pass
-            else:
-                return redirect(message.get_absolute_url())
-        message_list = self.get_search_query_set(query)
-    else:
-        message_list = Group.objects.all()
+    message_list = Group.objects.all()
 
     sort = request.args.get('sort')
-    # if sort == 'date':
-    #     message_list = message_list.order_by('-last_seen')
-    # elif sort == 'new':
-    #     message_list = message_list.order_by('-first_seen')
-    # else:
-    #     sort = 'priority'
-    #     if not is_search:
-    #         message_list = message_list.order_by('-score', '-last_seen')
+    if sort == 'date':
+        message_list = message_list.order_by('-last_seen')
+    elif sort == 'new':
+        message_list = message_list.order_by('-first_seen')
+    else:
+        sort = 'priority'
+        message_list = message_list.order_by('-score')
 
     filters = []
 
@@ -249,7 +237,8 @@ def group_details(group_id):
             yield k, v
 
     # Render our event's custom output
-    event_html = Markup(last_event.get_processor().to_html(last_event))
+    processor = last_event.get_processor()
+    event_html = Markup(processor.to_html(last_event, last_event.data.get('__event__')))
     
     return render_template('sentry/group/details.html', **{
         'page': 'details',

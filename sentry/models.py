@@ -58,7 +58,7 @@ class Group(models.Model):
     message         = models.String()
     state           = models.Integer(default=0)
     count           = models.Integer(default=0)
-    score           = models.Integer(default=0)
+    score           = models.Float(default=0.0)
     time_spent      = models.Integer(default=0)
     first_seen      = models.DateTime(default=datetime.datetime.now)
     last_seen       = models.DateTime(default=datetime.datetime.now)
@@ -68,14 +68,13 @@ class Group(models.Model):
 
     class Meta:
         ordering = 'last_seen'
-        indexes = ('time_spent', 'first_seen', 'last_seen')
+        indexes = ('time_spent', 'first_seen', 'last_seen', 'score')
 
-    def save(self, *args, **kwargs):
+    def before_save(self, *args, **kwargs):
         self.score = self.get_score()
-        super(Group, self).save(*args, **kwargs)
 
     def get_score(self):
-        return int(math.log(self.count) * 600 + int(self.last_seen.strftime('%s')))
+        return float(abs(math.log(self.count) * 600 + float(self.last_seen.strftime('%s.%m'))))
 
 class Event(models.Model):
     """
