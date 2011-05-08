@@ -1,4 +1,4 @@
-from flask import current_app as app
+from sentry import app
 
 _client = (None, None)
 

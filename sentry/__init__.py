@@ -84,12 +84,22 @@ Processor Ideas:
 
 try:
     VERSION = __import__('pkg_resources') \
-        .get_distribution('django-sentry').version
+        .get_distribution('sentry').version
 except Exception, e:
     VERSION = 'unknown'
 
-    from flask import Flask
+from flask import Flask
+
+from sentry.db import get_backend
+from sentry.web.views import frontend
 
 app = Flask(__name__)
+
+# Build configuration
 app.config.from_object('sentry.conf.SentryConfig')
 app.config.from_envvar('SENTRY_SETTINGS', silent=True)
+
+# Register views
+app.register_module(frontend)
+
+db = get_backend(app)

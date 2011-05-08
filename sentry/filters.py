@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 from collections import OrderedDict
-from flask import current_app as app
+from sentry import app
 from jinja2 import Markup, escape
 
 class Widget(object):

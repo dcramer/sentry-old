@@ -7,7 +7,7 @@ import simplejson
 import time
 import urllib2
 
-from flask import current_app as app
+from sentry import app
 
 import sentry
 from sentry.helpers import construct_checksum, force_unicode, get_signature, \

@@ -12,15 +12,18 @@ import time
 import warnings
 import zlib
 
-from flask import render_template, redirect, request, url_for, current_app as app
+from flask import render_template, redirect, request, url_for, \
+                  Module, current_app as app
 
 from sentry.utils import get_filters, is_float, get_signature, parse_auth_header
-from sentry.models import GroupedMessage, Message
+from sentry.models import Group, Event
 from sentry.plugins import GroupActionProvider
-from sentry.templatetags.sentry_helpers import with_priority
+# from sentry.templatetags.sentry_helpers import with_priority
 from sentry.web.reporter import ImprovedExceptionReporter
 
 uuid_re = re.compile(r'^[a-z0-9]{32}$')
+
+frontend = Module(__name__)
 
 def login_required(func):
     def wrapped(request, *args, **kwargs):
@@ -34,25 +37,25 @@ def login_required(func):
     wrapped.__name__ = func.__name__
     return wrapped
 
-@app.route('/auth/login/')
+@frontend.route('/auth/login/')
 def login(request):
     # TODO:
     pass
 
-@app.route('/auth/logout/')
+@frontend.route('/auth/logout/')
 def logout(request):
     # TODO:
     pass
 
 @login_required
-@app.route('/search/')
+@frontend.route('/search/')
 def search(request):
     try:
-        page = int(request.GET.get('p', 1))
+        page = int(request.args.get('p', 1))
     except (TypeError, ValueError):
         page = 1
 
-    query = request.GET.get('q')
+    query = request.args.get('q')
     has_search = bool(app.config['SEARCH_ENGINE'])
 
     if query:
@@ -71,7 +74,7 @@ def search(request):
     else:
         message_list = GroupedMessage.objects.none()
     
-    sort = request.GET.get('sort')
+    sort = request.args.get('sort')
     if sort == 'date':
         message_list = message_list.order_by('-last_seen')
     elif sort == 'new':
@@ -87,18 +90,18 @@ def search(request):
     })
 
 @login_required
-@app.route('/')
+@frontend.route('/')
 def index():
     filters = []
     for filter_ in get_filters():
         filters.append(filter_(request))
 
     try:
-        page = int(request.GET.get('p', 1))
+        page = int(request.args.get('p', 1))
     except (TypeError, ValueError):
         page = 1
 
-    query = request.GET.get('content')
+    query = request.args.get('content')
     is_search = query
 
     if is_search:
@@ -114,7 +117,7 @@ def index():
     else:
         message_list = Group.objects.all()
 
-    sort = request.GET.get('sort')
+    sort = request.args.get('sort')
     # if sort == 'date':
     #     message_list = message_list.order_by('-last_seen')
     # elif sort == 'new':
@@ -149,7 +152,7 @@ def index():
     }, request)
 
 @login_required
-@app.route('/api/')
+@frontend.route('/api/')
 def ajax_handler():
     op = request.form.get('op')
 
@@ -158,7 +161,7 @@ def ajax_handler():
         for filter_ in get_filters():
             filters.append(filter_(request))
 
-        query = request.GET.get('content')
+        query = request.args.get('content')
         is_search = query
 
         if is_search:
@@ -177,7 +180,7 @@ def ajax_handler():
                     | Q(traceback__icontains=query)
                 )
 
-        sort = request.GET.get('sort')
+        sort = request.args.get('sort')
         if sort == 'date':
             message_list = message_list.order_by('-last_seen')
         elif sort == 'new':
@@ -234,7 +237,7 @@ def ajax_handler():
     return response
 
 @login_required
-@app.route('/event/<event_id>')
+@frontend.route('/event/<event_id>')
 def group_details():
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -267,7 +270,7 @@ def group_details():
     }, request)
 
 @login_required
-@app.route('/event/<event_id>/messages/')
+@frontend.route('/event/<event_id>/messages/')
 def group_message_list(self, request, group_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -282,7 +285,7 @@ def group_message_list(self, request, group_id):
     }, request)
 
 @login_required
-@app.route('/event/<event_id>/messages/<message_id>/')
+@frontend.route('/event/<event_id>/messages/<message_id>/')
 def group_message_details():
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -316,7 +319,7 @@ def group_message_details():
         'traceback': traceback,
     }, request)
 
-@app.route('/store/')
+@frontend.route('/store/')
 def store():
     if request.method != 'POST':
         return HttpResponseNotAllowed('This method only supports POST requests')
@@ -347,17 +350,17 @@ def store():
         else:
             return HttpResponse('Unauthorized', status_code=401)
     else:
-        data = request.POST.get('data')
+        data = request.form.get('data')
         if not data:
             return HttpResponseBadRequest('Missing data')
 
-        format = request.POST.get('format', 'pickle')
+        format = request.form.get('format', 'pickle')
 
         if format not in ('pickle', 'json'):
             return HttpResponseBadRequest('Invalid format')
 
         # Legacy request (deprecated as of 2.0)
-        key = request.POST.get('key')
+        key = request.form.get('key')
         
         if key != app.config['KEY']:
             warnings.warn('A client is sending the `key` parameter, which will be removed in Sentry 2.0', DeprecationWarning)

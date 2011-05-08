@@ -7,7 +7,7 @@ try:
 except ImportError:
     import pickle
 
-from sentry.db import backend
+from sentry import db
 
 def map_field_values(model, values):
     result = {}
@@ -40,18 +40,18 @@ class Manager(object):
             index = index[1:]
         else:
             desc = False
-        return [self.model(pk, **data) for pk, data in backend.list(self.model, index, offset, limit, desc)]
+        return [self.model(pk, **data) for pk, data in db.list(self.model, index, offset, limit, desc)]
 
     def get(self, pk):
-        data = backend.get(self.model, pk)
+        data = db.get(self.model, pk)
         return self.model(pk, **data)
 
     def create(self, **values):
         pk = values.pop('pk', None)
         if pk:
-            backend.set(self.model, pk, **map_field_values(self.model, values))
+            db.set(self.model, pk, **map_field_values(self.model, values))
         else:
-            pk = backend.add(self.model, **map_field_values(self.model, values))
+            pk = db.add(self.model, **map_field_values(self.model, values))
 
         instance = self.model(pk, **values)
 
@@ -68,7 +68,7 @@ class Manager(object):
         return instance
 
     def update(self, pk, **values):
-        result = backend.set(self.model, pk, **map_field_values(self.model, values))
+        result = db.set(self.model, pk, **map_field_values(self.model, values))
 
         for index in self.model._meta.indexes:
             if index in values:
@@ -80,18 +80,18 @@ class Manager(object):
     def set_meta(self, pk, **values):
         if not values:
             return
-        backend.set_meta(self.model, pk, **map_field_values(self.model, values))
+        db.set_meta(self.model, pk, **map_field_values(self.model, values))
 
     def get_meta(self, pk):
-        return backend.get_meta(self.model, pk)
+        return db.get_meta(self.model, pk)
 
     def add_to_index(self, pk, index, score):
-        return backend.add_to_index(self.model, pk, index, score)
+        return db.add_to_index(self.model, pk, index, score)
 
     def get_or_create(self, defaults={}, **index):
         # return (instance, created)
 
-        pk = backend.get_by_cindex(self.model, **map_field_values(self.model, index))
+        pk = db.get_by_cindex(self.model, **map_field_values(self.model, index))
         if pk:
             return self.get(pk), False
 
@@ -100,7 +100,7 @@ class Manager(object):
 
         inst = self.create(**defaults)
 
-        backend.add_to_cindex(self.model, inst.pk, **map_field_values(self.model, index))
+        db.add_to_cindex(self.model, inst.pk, **map_field_values(self.model, index))
 
         return inst, True
 
@@ -178,7 +178,7 @@ class Model(object):
         return self.pk
 
     def incr(self, key, amount=1):
-        result = backend.incr(self.__class__, self.pk, key, amount)
+        result = db.incr(self.__class__, self.pk, key, amount)
         setattr(self, key, result)
         return result
 
@@ -194,10 +194,10 @@ class Model(object):
         return self.objects.get_meta(self.pk)
 
     def add_relation(self, instance, score):
-        return backend.add_relation(self.__class__, self.pk, instance.__class__, instance.pk, score)
+        return db.add_relation(self.__class__, self.pk, instance.__class__, instance.pk, score)
 
     def get_relations(self, model, offset=0, limit=100):
-        return [model(pk, **data) for pk, data in backend.list_relations(self.__class__, self.pk, model, offset, limit)]
+        return [model(pk, **data) for pk, data in db.list_relations(self.__class__, self.pk, model, offset, limit)]
 
     def _get_data(self):
         return self.get_meta() or {}

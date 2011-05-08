@@ -7,25 +7,32 @@ import sys
 from daemon.daemon import DaemonContext
 from daemon.runner import DaemonRunner, make_pidlockfile
 from eventlet import wsgi
-from flask import current_app as app
 from optparse import OptionParser
-from sentry import VERSION
-from sentry.wsgi import application
+
+from sentry import VERSION, app
 
 class SentryServer(DaemonRunner):
     pidfile_timeout = 10
     start_message = u"started with pid %(pid)d"
 
     def __init__(self, host=None, port=None, pidfile=None,
-                 logfile=None):
+                 logfile=None, daemonize=False):
         if not logfile:
             logfile = app.config['WEB_LOG_FILE']
 
-        self.daemon_context = DaemonContext()
+        logfile = os.path.realpath(logfile)
+        pidfile = os.path.realpath(pidfile or app.config['WEB_PID_FILE'])
+        
+        if daemonize:
+            detach_process = True
+        else:
+            detach_process = False
+
+        self.daemon_context = DaemonContext(detach_process=detach_process)
         self.daemon_context.stdout = open(logfile, 'w+')
         self.daemon_context.stderr = open(logfile, 'w+', buffering=0)
 
-        self.pidfile = make_pidlockfile(pidfile or app.config['WEB_PID_FILE'], self.pidfile_timeout)
+        self.pidfile = make_pidlockfile(pidfile, self.pidfile_timeout)
 
         self.daemon_context.pidfile = self.pidfile
 
@@ -37,11 +44,15 @@ class SentryServer(DaemonRunner):
 
     def execute(self, action):
         self.action = action
-        self.do_action()
+        if self.daemon_context.detach_process is False and self.action == 'start':
+            # HACK:
+            self.run()
+        else:
+            self.do_action()
 
     def run(self):
         upgrade()
-        wsgi.server(eventlet.listen((self.host, self.port)), application)
+        wsgi.server(eventlet.listen((self.host, self.port)), app)
 
 def cleanup(days=30, logger=None, site=None, server=None):
     from sentry.models import GroupedMessage, Message
@@ -92,6 +103,7 @@ def main():
         parser.add_option('--host', metavar='HOSTNAME')
         parser.add_option('--port', type=int, metavar='PORT')
         parser.add_option('--daemon', action='store_true', default=False, dest='daemonize')
+        parser.add_option('--no-daemon', action='store_false', default=False, dest='daemonize')
         parser.add_option('--pidfile', dest='pidfile')
         parser.add_option('--logfile', dest='logfile')
     elif args[1] == 'stop':
@@ -122,7 +134,8 @@ def main():
 
     elif args[0] == 'start':
         app = SentryServer(host=options.host, port=options.port,
-                             pidfile=options.pidfile, logfile=options.logfile)
+                           pidfile=options.pidfile, logfile=options.logfile,
+                           daemonize=options.daemonize)
         app.execute(args[0])
 
     elif args[0] == 'restart':

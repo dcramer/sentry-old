@@ -7,7 +7,7 @@ import warnings
 from django.core.signals import got_request_exception
 from django.db import transaction
 
-from flask import current_app as app
+from sentry import app
 
 from sentry.client import get_client
 

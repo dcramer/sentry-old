@@ -1,12 +1,13 @@
-/build
-/dist
-/*.egg-info
-*.egg
 *.db
+*.egg
+*.pid
 *.pyc
 *.log
 pip-log.txt
 .DS_Store
+/build
+/dist
+/*.egg-info
 /example_project/local_settings.py
 /docs/html
 /docs/doctrees

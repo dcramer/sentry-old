@@ -10,8 +10,7 @@ import socket
 class SentryConfig(object):
     ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
 
-    # Allow local testing of Sentry even if DEBUG is enabled
-    DEBUG = False
+    DEBUG = True
 
     DATABASE_USING = None
 
@@ -89,6 +88,10 @@ class SentryConfig(object):
             'event': 'sentry.events.QueryEvent',
         },
     }
+    
+    DATASTORE = {
+        'ENGINE': 'sentry.db.backends.redis.RedisBackend',
+    }
 
     SERVER_EMAIL = None
 
@@ -96,5 +99,5 @@ class SentryConfig(object):
 
     WEB_HOST = 'localhost'
     WEB_PORT = 9000
-    WEB_LOG_FILE = '/var/log/sentry.log'
-    WEB_PID_FILE = '/var/run/sentry.pid'
+    WEB_LOG_FILE = 'sentry.log'
+    WEB_PID_FILE = 'sentry.pid'
