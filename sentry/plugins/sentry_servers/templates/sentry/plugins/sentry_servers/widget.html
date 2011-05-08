@@ -1,5 +1,3 @@
-{% load sentry_helpers %}
-
 {% with group.unique_servers|slice:"10" as unique_servers %}
     {% if unique_servers %}
         <h2>Servers</h2>

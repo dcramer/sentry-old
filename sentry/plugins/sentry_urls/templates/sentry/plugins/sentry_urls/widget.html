@@ -1,5 +1,3 @@
-{% load sentry_helpers %}
-
 {% with group.unique_urls|slice:"10" as unique_urls %}
     {% if unique_urls %}
         <h2>URLs</h2>
