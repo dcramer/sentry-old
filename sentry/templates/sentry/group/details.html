@@ -3,7 +3,7 @@
 {% block title %}{{ group.error }} | {{ block.super }}{% endblock %}
 
 {% block heading %}
-    {{ gettext(Message Details) }}
+    {{ gettext('Message Details') }}
 {% endblock %}
 
 {% block sidebar %}
@@ -67,7 +67,7 @@
     {% block inner %}
         <div id="details">
             {% if group.has_two_part_message %}
-                <h2>{{ gettext(Full Message) }}</h2>
+                <h2>{{ gettext('Full Message') }}</h2>
                 <pre id="full-message">{{ group.message }}</pre>
             {% endif %}
             
@@ -155,15 +155,15 @@
                     });
                 });
                 </script>
-                <h2>{{ gettext(Frequency) }}</h2>
+                <h2>{{ gettext('Frequency') }}</h2>
                 <div id="chart">
-                    <noscript>{{ gettext(Get yourself some JavaScripts dood) }}</noscript>
+                    <noscript>{{ gettext('Get yourself some JavaScripts dood') }}</noscript>
                 </div>
                 {% endif %}
             {% endwith %}
 
             <div id="requestinfo">
-                <h2>{{ gettext(Additional Data) }}</h2>
+                <h2>{{ gettext('Additional Data') }}</h2>
                 <table>
                     {% for k, v in json_data %}
                         <tr>
@@ -174,8 +174,8 @@
                                     <table class="vars">
                                         <thead>
                                             <tr>
-                                                <th>{{ gettext(Variable) }}</th>
-                                                <th>{{ gettext(Value) }}</th>
+                                                <th>{{ gettext('Variable') }}</th>
+                                                <th>{{ gettext('Value') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -201,7 +201,7 @@
             
             {% if version_data %}
                 <div id="versioninfo">
-                    <h2>{{ gettext(Module Versions) }}</h2>
+                    <h2>{{ gettext('Module Versions') }}</h2>
                     <table>
                         {% for k, v in version_data %}
                             <tr>
