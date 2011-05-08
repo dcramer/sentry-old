@@ -28,7 +28,8 @@ setup(
         'django-paging>=0.2.4',
         'django-indexer>=0.3.0',
         'django-templatetag-sugar>=0.1.0',
-        'flask',
+        'Flask',
+        'Flask-Babel',
         # python-daemon and eventlet are required to run the Sentry indepenent webserver
         'python-daemon>=1.6',
         'eventlet>=0.9.15',

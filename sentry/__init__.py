@@ -89,6 +89,7 @@ except Exception, e:
     VERSION = 'unknown'
 
 from flask import Flask
+from flaskext.babel import Babel
 
 from sentry.db import get_backend
 from sentry.web.views import frontend
@@ -102,4 +103,7 @@ app.config.from_envvar('SENTRY_SETTINGS', silent=True)
 # Register views
 app.register_module(frontend)
 
+# Load configured datastore
 app.db = get_backend(app)
+
+babel = Babel(app)

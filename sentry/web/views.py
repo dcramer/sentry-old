@@ -140,7 +140,7 @@ def index():
 
     has_realtime = page == 1
 
-    return render_template('sentry/index.html', {
+    return render_template('sentry/index.html', **{
         'has_realtime': has_realtime,
         'message_list': message_list,
         'today': today,
@@ -149,7 +149,7 @@ def index():
         'any_filter': any_filter,
         'request': request,
         'filters': filters,
-    }, request)
+    })
 
 @login_required
 @frontend.route('/api/')

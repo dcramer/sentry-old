@@ -1,7 +1,7 @@
 {% extends "sentry/group/details.html" %}
 
 {% block inner %}
-    <h2>{% trans "Message List" %}</h2>
+    <h2>{{ gettext(Message List) }}</h2>
     {% paginate message_list from request as message_list per_page 15 %}
     <div class="clearfix">
         {{ message_list.paging }}
