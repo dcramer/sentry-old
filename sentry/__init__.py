@@ -106,4 +106,6 @@ app.register_module(frontend)
 # Load configured datastore
 app.db = get_backend(app)
 
+app.jinja_env.globals['sentry_version'] = VERSION
+
 babel = Babel(app)

@@ -4,18 +4,18 @@
         <meta http-equiv="content-type" content="text/html; charset=utf-8"> 
         <meta name="robots" content="NONE,NOARCHIVE">
         <link href="http{% if request.is_secure %}s{% endif %}://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:light,regular&amp;subset=latin" rel="stylesheet" type="text/css">
-        <link href="{% url sentry-media "styles/global.css" %}" rel="stylesheet" type="text/css"/>
-        <link href="{% url sentry-media "images/sentry.png" %}" rel="shortcut icon"/>
+        <link href="{{ url_for('static_media', path="styles/global.css") }}" rel="stylesheet" type="text/css"/>
+        <link href="{{ url_for('static_media', path="images/sentry.png") }}" rel="shortcut icon"/>
         <title>{% block title %}Sentry{% endblock %}</title> 
-        <script type="text/javascript" src="{% url sentry-media "scripts/jquery.js" %}"></script>
-        <script type="text/javascript" src="{% url sentry-media "scripts/jquery.animate-colors-min.js" %}"></script>
-        <script type="text/javascript" src="{% url sentry-media "scripts/highcharts.js" %}" ></script>
-        <script type="text/javascript" src="{% url sentry-media "scripts/global.js" %}"></script>
+        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/jquery.js") }}"></script>
+        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/jquery.animate-colors-min.js") }}"></script>
+        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/highcharts.js") }}" ></script>
+        <script type="text/javascript" src="{{ url_for('static_media', path="scripts/global.js") }}"></script>
         <script type="text/javascript">
         Sentry.config({
-            mediaUrl: '{% url sentry-media '' %}',
-            apiUrl: '{% url sentry-ajax %}',
-            defaultImage: '{% url sentry-media 'images/sentry.png' %}'
+            mediaUrl: '{{ url_for('static_media', path='') }}',
+            apiUrl: '{{ url_for('ajax_handler') }}',
+            defaultImage: '{{ url_for('static_media', path='images/sentry.png') }}'
         });
         {% if has_realtime %}
         Sentry.realtime.enable();
@@ -27,10 +27,10 @@
         {% block body %}
         <div id="header"> 
             <div class="container">
-                <h1><a href="{% url sentry %}"><img src="{% url sentry-media "images/sentry.png" %}" border="0" width="32"/>Sentry</a></h1>
+                <h1><a href="{{ url_for('index') }}"><img src="{{ url_for('static_media', path="images/sentry.png") }}" border="0" width="32"/>Sentry</a></h1>
                 <h2>{% block heading %}{{ gettext('Dashboard') }}{% endblock %}</h2>
                 {% block search %}
-                    <form id="search" method="GET" action="{% url sentry-search %}">
+                    <form id="search" method="GET" action="{{ url_for('search') }}">
                         <input type="hidden" name="sort" value="{% if sort %}{{ sort }}{% endif %}"/>
                         <input type="text" name="q" value="{% if query %}{{ query }}{% endif %}" placeholder="{% if has_search %}search query or message id{% else %}message id{% endif %}"/>
                         <button type="submit">{{ gettext('Go') }}</button>
@@ -57,10 +57,10 @@
          </div>
         <div id="footer">
             <div class="container">
-                Sentry {% sentry_version %} | {{ gettext('Powered by sexy Django magic') }} | Conjured up by the <a href="http://code.disqus.com">DISQUS</a> team and other noble <a href="https://github.com/dcramer/django-sentry/contributors">sorcerers</a>.
+                Sentry {{ sentry_version }} | {{ gettext('Powered by sexy Django magic') }} | Conjured up by the <a href="http://code.disqus.com">DISQUS</a> team and other noble <a href="https://github.com/dcramer/django-sentry/contributors">sorcerers</a>.
                 <ul class="nav" id="account">
-                    {% if request.user.is_authenticated %}
-                        <li><a href="{% url sentry-logout %}">{{ gettext('Logout') }}</a></li>
+                    {% if g.user %}
+                        <li><a href="{{ url_for('logout') }}">{{ gettext('Logout') }}</a></li>
                     {% endif %}
                 </ul>
             </div>

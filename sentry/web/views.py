@@ -13,7 +13,7 @@ import warnings
 import zlib
 
 from flask import render_template, redirect, request, url_for, \
-                  Module, current_app as app
+                  Module, current_app as app, abort, Response
 
 from sentry.utils import get_filters, is_float, get_signature, parse_auth_header
 from sentry.models import Group, Event
@@ -219,7 +219,7 @@ def ajax_handler():
         group.status = 1
 
         if not request.is_ajax():
-            return redirect(request.META['HTTP_REFERER'])
+            return redirect(request.environ['HTTP_REFERER'])
 
         data = [
             (m.pk, {
@@ -324,7 +324,7 @@ def store():
     if request.method != 'POST':
         return HttpResponseNotAllowed('This method only supports POST requests')
 
-    if request.META.get('AUTHORIZATION', '').startswith('Sentry'):
+    if request.environ.get('AUTHORIZATION', '').startswith('Sentry'):
         auth_vars = parse_auth_header(request.META['AUTHORIZATION'])
         
         signature = auth_vars.get('sentry_signature')
@@ -339,10 +339,10 @@ def store():
             try:
                 timestamp = float(timestamp)
             except ValueError:
-                return HttpResponseBadRequest('Invalid timestamp')
+                abort(400, 'Invalid Timestamp')
 
             if timestamp < time.time() - 3600: # 1 hour
-                return HttpResponseGone('Message has expired')
+                abort(410, 'Message has expired')
 
             sig_hmac = get_signature(data, timestamp)
             if sig_hmac != signature:
@@ -420,7 +420,8 @@ def group_plugin_action(request, group_id, slug):
         return response
     return redirect(request.META.get('HTTP_REFERER') or reverse('sentry'))
 
-def static_media(request, path):
+@frontend.route('/_static/<path:path>', strict_slashes=False)
+def static_media(path):
     """
     Serve static files below a given point in the directory structure.
     """
@@ -450,18 +451,19 @@ def static_media(request, path):
     if newpath and path != newpath:
         return redirect(newpath)
     fullpath = os.path.join(document_root, newpath)
+    print fullpath
     if os.path.isdir(fullpath):
-        raise Http404("Directory indexes are not allowed here.")
+        abort(404, "Directory indexes are not allowed here.")
     if not os.path.exists(fullpath):
-        raise Http404('"%s" does not exist' % fullpath)
+        abort(404, '"%s" does not exist' % fullpath)
     # Respect the If-Modified-Since header.
     statobj = os.stat(fullpath)
     mimetype = mimetypes.guess_type(fullpath)[0] or 'application/octet-stream'
-    if not was_modified_since(request.META.get('HTTP_IF_MODIFIED_SINCE'),
+    if not was_modified_since(request.environ.get('HTTP_IF_MODIFIED_SINCE'),
                               statobj[stat.ST_MTIME], statobj[stat.ST_SIZE]):
-        return HttpResponseNotModified(mimetype=mimetype)
+        abort(304, mimetype=mimetype)
     contents = open(fullpath, 'rb').read()
-    response = HttpResponse(contents, mimetype=mimetype)
-    response["Last-Modified"] = http_date(statobj[stat.ST_MTIME])
-    response["Content-Length"] = len(contents)
-    return response
+    return Response(contents, mimetype=mimetype, headers=(
+        ('Last-Modified', http_date(statobj[stat.ST_MTIME])),
+        ('Content-Length', len(contents)),
+    ))

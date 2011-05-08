@@ -3,8 +3,6 @@
 {% block heading %}{{ gettext('Search') }}{% endblock %}
 
 {% block main %}
-    {% paginate message_list from request as message_list per_page 15 %}
-
     <div class="paging-wrap">
         <div class="clearfix">
             <form method="GET" action="">
@@ -16,13 +14,13 @@
                 </select>
                 </div>
             </form>
-            {{ message_list.paging }}
+            34,341 Events Today
         </div>
     </div>
 
-    {% if message_list.objects %}
+    {% if message_list %}
         <ul class="messages" id="message_list">
-            {% for group, priority in message_list.objects|with_priority %}
+            {% for group, priority in message_list %}
                 {% include "sentry/partial/_group.html" %}
             {% endfor %}
         </ul>
@@ -31,8 +29,4 @@
             <li class="no-messages" id="no_messages">{{ gettext('No messages match your query.') }}</li>
         </ul>
     {% endif %}
-
-    <div class="clearfix">
-        {{ message_list.paging }}
-    </div>
 {% endblock %}
