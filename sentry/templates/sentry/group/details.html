@@ -42,7 +42,6 @@
                     <span class="tag tag-{{ k }}">{{ v }}</span>
                 {% endfor %}
             </p>
-            <a href="{{ url_for('group_details', group_id=group.pk) }}" class="row_link"></a>
             {% if group.status == 0 %}
                 <a href="{{ url_for('ajax_handler') }}?op=resolve&amp;gid={{ group.pk }}" onclick="Sentry.stream.resolve({{ group.pk }});return false;" class="button resolve_button hidden">&#10003;</a>
             {% endif %}

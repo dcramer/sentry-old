@@ -1,0 +1,11 @@
+<li class="level-{{ event.level }}{% if priority %} priority-{{ priority }}{% endif %}" id="message_{{ event.pk }}" data-sentry-count="{{ event.times_seen }}">
+    <h3><a href="{{ url_for('group_event_details', group_id=group.pk, event_id=event.pk) }}">{{ event }}</a></h3>
+    <span class="last_seen">{{ event.date|timesince }}</span>
+    <span class="status status-{{ event.status }}">{{ event.get_status_display }}</span>
+    <p class="message">
+        {% for k, v in event.tags %}
+            <span class="tag tag-{{ k }}">{{ v }}</span>
+        {% endfor %}
+    </p>
+    <a href="{{ url_for('group_event_details', group_id=group.pk, event_id=event.pk) }}" class="row_link"></a>
+</li>

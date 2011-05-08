@@ -1,17 +1,10 @@
 {% extends "sentry/group/details.html" %}
 
 {% block inner %}
-    <h2>{{ gettext('Message List') }}</h2>
-    {% paginate event_list from request as event_list per_page 15 %}
-    <div class="clearfix">
-        {{ event_list.paging }}
-    </div>
+    <h2>{{ gettext('Events') }}</h2>
     <ul class="events" id="event_list">
-        {% for message in event_list.objects %}
-            {% include "sentry/partial/_message.html" %}
+        {% for event in event_list %}
+            {% include "sentry/partial/event.html" %}
         {% endfor %}
     </ul>
-    <div class="clearfix">
-        {{ event_list.paging }}
-    </div>
 {% endblock %}

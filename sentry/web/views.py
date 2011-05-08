@@ -172,7 +172,7 @@ def ajax_handler():
 
         data = [
             (m.pk, {
-                'html': render_template('sentry/partial/_group.html', **{
+                'html': render_template('sentry/partial/group.html', **{
                     'group': m,
                     'priority': p,
                     'request': request,
@@ -197,7 +197,7 @@ def ajax_handler():
 
         data = [
             (m.pk, {
-                'html': render_template('sentry/partial/_group.html', **{
+                'html': render_template('sentry/partial/group.html', **{
                     'group': m,
                     'request': request,
                 }),
@@ -249,9 +249,9 @@ def group_event_list(group_id):
 
 @login_required
 @app.route('/group/<group_id>/events/<event_id>/')
-def group_message_details(group_id, event_id):
+def group_event_details(group_id, event_id):
     group = get_object_or_404(Group, pk=group_id)
-    event = get_object_or_404(Event, pk=group_id)
+    event = get_object_or_404(Event, pk=event_id)
 
     def iter_data(obj):
         for k, v in obj.data.iteritems():
@@ -359,7 +359,7 @@ def store():
 
 @login_required
 @app.route('/group/<group_id>/<path:slug>')
-def group_plugin_action(request, group_id, slug):
+def group_plugin_action(group_id, slug):
     group = get_object_or_404(Group, pk=group_id)
     
     try:

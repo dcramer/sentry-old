@@ -44,7 +44,7 @@
     {% if event_list %}
         <ul class="events" id="event_list">
             {% for group, priority in event_list|with_priority %}
-                {% include "sentry/partial/_group.html" %}
+                {% include "sentry/partial/group.html" %}
             {% endfor %}
         </ul>
     {% else %}
