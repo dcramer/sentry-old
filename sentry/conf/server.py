@@ -1,8 +1,16 @@
-import os.path
-import sys
-# Django settings for example_project project.
+"""
+These settings act as the default (base) settings for the Sentry-provided web-server
+"""
 
-DEBUG = True
+from django.conf.global_settings import *
+
+import hashlib
+import os
+import os.path
+import socket
+import sys
+
+DEBUG = False
 TEMPLATE_DEBUG = True
 
 ADMINS = (
@@ -13,15 +21,15 @@ INTERNAL_IPS = ('127.0.0.1',)
 
 MANAGERS = ADMINS
 
-PROJECT_ROOT = os.path.dirname(__file__)
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
 
 sys.path.insert(0, os.path.abspath(os.path.join(PROJECT_ROOT, '..')))
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'sentry',                      # Or path to database file if using sqlite3.
-        'USER': 'postgres',                      # Not used with sqlite3.
+        'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+        'NAME': 'sentry.db',                      # Or path to database file if using sqlite3.
+        'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
@@ -51,22 +59,8 @@ USE_I18N = True
 # calendars according to the current locale
 USE_L10N = True
 
-# Absolute path to the directory that holds media.
-# Example: "/home/media/media.lawrence.com/"
-MEDIA_ROOT = ''
-
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash if there is a path component (optional in other cases).
-# Examples: "http://media.lawrence.com", "http://example.com/media/"
-MEDIA_URL = ''
-
-# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
-# trailing slash.
-# Examples: "http://foo.com/media/", "/media/".
-ADMIN_MEDIA_PREFIX = '/media/'
-
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = ')*)&8a36)6%74e@-ne5(-!8a(vv#tkv)(eyg&@0=zd^pl!7=y@'
+SECRET_KEY = hashlib.md5(socket.gethostname() + ')*)&8a36)6%74e@-ne5(-!8a(vv#tkv)(eyg&@0=zd^pl!7=y@').hexdigest()
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
@@ -80,10 +74,10 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    # 'django.contrib.messages.middleware.MessageMiddleware',
 )
 
-ROOT_URLCONF = 'example_project.urls'
+ROOT_URLCONF = 'sentry.web.urls'
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -98,54 +92,20 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.sites',
-    'django.contrib.messages',
+    # 'django.contrib.messages',
     'sentry',
-    'sentry.client.django',
-    # 'sentry.plugins.sentry_redmine',
-    # 'sentry.plugins.sentry_servers',
-    # 'sentry.plugins.sentry_sites',
-    # 'sentry.plugins.sentry_urls',
+    'sentry.client',
+    'sentry.plugins.sentry_servers',
+    'sentry.plugins.sentry_sites',
+    'sentry.plugins.sentry_urls',
+    'haystack',
+    'south',
 )
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 
-SENTRY_THRASHING_TIMEOUT = 0
-SENTRY_TESTING = True
-SENTRY_SITE = 'example'
-SENTRY_PUBLIC = False
-
-SENTRY_FILTERS = (
-    'example_project.filters.IPFilter',
-    'sentry.filters.StatusFilter',
-    'sentry.filters.LoggerFilter',
-    'sentry.filters.LevelFilter',
-    'sentry.filters.ServerNameFilter',
-    'sentry.filters.SiteFilter',
-)
 SENTRY_SEARCH_ENGINE = 'whoosh'
 SENTRY_SEARCH_OPTIONS = {
     'path': os.path.join(PROJECT_ROOT, 'sentry_index'),
 }
-
-# This shouldn't be needed, but bleh
-# HAYSTACK_SITECONF = 'sentry.search_indexes'
-
-# try:
-#     import debug_toolbar
-# except ImportError, exc:
-#     pass
-# else:
-#     INSTALLED_APPS = INSTALLED_APPS + (
-#         'debug_toolbar',
-#     )
-
-#     MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + (
-#         'debug_toolbar.middleware.DebugToolbarMiddleware',
-#     )
-
-try:
-    from local_settings import *
-except ImportError, e:
-    print e
-    pass

@@ -1,3 +1,104 @@
+1.7.5
+
+* Implemented new client/server storage API and signing methods.
+* Fixed a bug where accessing __sentry__ would sometimes cause errors on
+  certain code paths.
+
+1.7.4
+
+* Fixed a bug with potential recursion issues.
+* Fixed a bug with the storage API and unicode keys.
+
+1.7.3
+
+* Storage API has better responses when data fails to decode, or
+  you send a bad request.
+* Documentation improvements for JSON storage API.
+
+1.7.2
+
+* All strings, lists, tuples, and sets are now shortened before sending
+  to the server. Iterable data structures are truncated to the first
+  50 items, and strings are truncated to the first 200 characters.
+  
+  Both shorteners have configurable values in the settings.
+
+1.7.1
+
+* Fixed a bug that slipped through with blocktrans usage.
+
+1.7.0
+
+* Added ``score`` to ``GroupedMessage`` (schema change).
+* Added ``MessageIndex`` (schema change).
+* Added Async client (thanks to Yuri Baburov).
+* Added support for raw_post_data (thanks to Matthew Schinckel).
+* django-paging and django-indexer no longer need to be in INSTALLED_APPS.
+* Added an index for GroupedMessages.times_seen.
+* The ``score`` column will update atomically in PostgreSQL and MySQL.
+* Added the frequency sort option.
+* Better internationalization support.
+* Fixed a bug with Oracle's date truncation support (changed to hh24).
+* Respect TIME_ZONE by using auto_now_* on DateTimeField's.
+* Tests required Haystack and Celery are now skipped if module is not found.
+
+1.6.10
+
+* Added JSON support to storage API.
+* Changed default client to use JSON format.
+
+1.6.9.1
+
+* Fixed an issue with encoding to UTF-8 for Haystack.
+
+1.6.9
+
+* Added URLs to default search parameters.
+* Fixed a bug to ensure template information is only added if its the correct loader
+
+1.6.8.1
+
+* Search will now show when unauthenticated (e.g. when SENTRY_PUBLIC is enabled)
+
+1.6.8
+
+* Search no longer allows filters.
+* Search no longer allows arbitrary queries without Haystack.
+* Added logger, level, site, server, and url to search index.
+* Haystack has been updated for further flexibility.
+* SearchFilter is now unused (you should update your configs).
+
+1.6.7
+
+* Moved static media into /static/.
+* Added serve_static view to handle static media solely within Sentry.
+* Added SENTRY_STATIC_URL_PREFIX setting.
+
+1.6.6
+
+* setup.py install will no longer install example_project.
+* Fixed an issue where __sentry__ would be called even if it wasn't a callable.
+* Fixed an issue where transactions would attempt a rollback when not managed while creating
+  the sort index.
+
+1.6.5
+
+* Set a last_message_id so when thrashing is hit there is still a point of reference for tracing.
+* Check correct permissions for Sentry.
+
+1.6.4
+
+* Fixed a memory leak due to TextNode's being created from leading whitespace in realtime packets.
+
+1.6.3
+
+* Fixed a critical bug in the Sentry JS namespace preventing it from loading.
+
+1.6.2
+
+* LogHandler will attempt to pick up the request automatically using SentryLogMiddleware.
+* Updated AJAX CSRF support for Django 1.2.5.
+* request.sentry is now set in any event which has request as part of the parameters.
 
 1.6.0
 

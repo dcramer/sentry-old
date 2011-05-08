@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import base64
 try:
     import cPickle as pickle
@@ -10,17 +12,11 @@ except ImportError:
 import datetime
 import hashlib
 import logging
-import sys
 
-from sentry import conf
+from sentry.conf import settings
 from sentry.db import models, backend
-from sentry.helpers import cached_property, construct_checksum, get_db_engine, transform, get_filters
-from sentry.reporter import FakeRequest
-
-try:
-    from idmapper.models import SharedMemoryModel as Model
-except ImportError:
-    Model = models.Model
+from sentry.utils import cached_property, construct_checksum, transform, get_filters, \
+                         MockRequest
 
 class Tag(models.Model):
     """
@@ -69,6 +65,7 @@ class Group(models.Model):
     message         = models.String()
     state           = models.Integer(default=0)
     count           = models.Integer(default=0)
+    score           = models.Integer(default=0)
     time_spent      = models.Integer(default=0)
     first_seen      = models.DateTime(default=datetime.datetime.now)
     last_seen       = models.DateTime(default=datetime.datetime.now)
@@ -81,8 +78,11 @@ class Group(models.Model):
         indexes = ('time_spent', 'first_seen', 'last_seen')
 
     def save(self, *args, **kwargs):
-        self.score = math.log(self.count) * 600 + int(self.last_seen)
+        self.score = self.get_score()
         super(Group, self).save(*args, **kwargs)
+
+    def get_score(self):
+        return int(math.log(self.count) * 600 + int(self.last_seen.strftime('%s')))
 
 class Event(models.Model):
     """
@@ -103,7 +103,7 @@ class Event(models.Model):
         ordering = 'date'
 
     def mail_admins(self, request=None, fail_silently=True):
-        if not conf.ADMINS:
+        if not settings.ADMINS:
             return
 
         from django.core.mail import send_mail
@@ -124,7 +124,7 @@ class Event(models.Model):
         if request:
             link = request.build_absolute_url(self.get_absolute_url())
         else:
-            link = '%s%s' % (conf.URL_PREFIX, self.get_absolute_url())
+            link = '%s%s' % (settings.URL_PREFIX, self.get_absolute_url())
 
         body = render_to_string('sentry/emails/error.txt', {
             'request_repr': request_repr,
@@ -135,7 +135,7 @@ class Event(models.Model):
         })
 
         send_mail(subject, body,
-                  conf.SERVER_EMAIL, conf.ADMINS,
+                  django_settings.SERVER_EMAIL, settings.ADMINS,
                   fail_silently=fail_silently)
 
     def get_version(self):
@@ -154,13 +154,14 @@ class RequestEvent(object):
 
     @cached_property
     def request(self):
-        fake_request = FakeRequest()
-        fake_request.META = self.data.get('META') or {}
-        fake_request.GET = self.data.get('GET') or {}
-        fake_request.POST = self.data.get('POST') or {}
-        fake_request.FILES = self.data.get('FILES') or {}
-        fake_request.COOKIES = self.data.get('COOKIES') or {}
-        fake_request.url = self.url
+        fake_request = MockRequest(
+            META = self.data.get('META') or {},
+            GET = self.data.get('GET') or {},
+            POST = self.data.get('POST') or {},
+            FILES = self.data.get('FILES') or {},
+            COOKIES = self.data.get('COOKIES') or {},
+            url = self.url,
+        )
         if self.url:
             fake_request.path_info = '/' + self.url.split('/', 3)[-1]
         else:

@@ -1,30 +1,36 @@
+import hmac
 import logging
 import sys
-import urllib
-import urllib2
 import uuid
+import warnings
+from pprint import pformat
+from types import ClassType, TypeType
 
 import django
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.utils.encoding import force_unicode
-from django.utils.hashcompat import md5_constructor
+from django.utils.hashcompat import md5_constructor, sha_constructor
 
-from sentry import conf
+import sentry
+from sentry.conf import settings
 
 _FILTER_CACHE = None
 def get_filters():
     global _FILTER_CACHE
 
     if _FILTER_CACHE is None:
-
+        
         filters = []
-        for filter_ in conf.FILTERS:
+        for filter_ in settings.FILTERS:
+            if filter_.endswith('sentry.filters.SearchFilter'):
+                continue
             module_name, class_name = filter_.rsplit('.', 1)
             try:
                 module = __import__(module_name, {}, {}, class_name)
                 filter_ = getattr(module, class_name)
             except Exception:
-                logging.exception('Unable to import %s' % (filter_,))
+                logger = logging.getLogger('sentry.errors')
+                logger.exception('Unable to import %s' % (filter_,))
                 continue
             filters.append(filter_)
         _FILTER_CACHE = filters
@@ -34,10 +40,10 @@ def get_filters():
 def get_db_engine(alias='default'):
     has_multidb = django.VERSION >= (1, 2)
     if has_multidb:
-        value = settings.DATABASES[alias]['ENGINE']
+        value = django_settings.DATABASES[alias]['ENGINE']
     else:
         assert alias == 'default', 'You cannot fetch a database engine other than the default on Django < 1.2'
-        value = settings.DATABASE_ENGINE
+        value = django_settings.DATABASE_ENGINE
     return value.rsplit('.', 1)[-1]
 
 def construct_checksum(level=logging.ERROR, class_name='', traceback='', message='', **kwargs):
@@ -51,43 +57,64 @@ def construct_checksum(level=logging.ERROR, class_name='', traceback='', message
     checksum.update(message)
     return checksum.hexdigest()
 
-def shorten(var):
-    var = transform(var)
-    if isinstance(var, basestring) and len(var) > 200:
-        var = var[:200] + '...'
-    return var
-
-def varmap(func, var):
+def varmap(func, var, context=None):
+    if context is None:
+        context = {}
+    objid = id(var)
+    if objid in context:
+        return func('<...>')
+    context[objid] = 1
     if isinstance(var, dict):
-        return dict((k, varmap(func, v)) for k, v in var.iteritems())
+        ret = dict((k, varmap(func, v, context)) for k, v in var.iteritems())
     elif isinstance(var, (list, tuple)):
-        return [varmap(func, f) for f in var]
+        ret = [varmap(func, f, context) for f in var]
     else:
-        return func(var)
+        ret = func(var)
+    del context[objid]
+    return ret
 
-def transform(value):
+def has_sentry_metadata(value):
+    try:
+        return callable(getattr(value, '__sentry__', None))
+    except:
+        return False
+
+def transform(value, stack=[], context=None):
     # TODO: make this extendable
     # TODO: include some sane defaults, like UUID
     # TODO: dont coerce strings to unicode, leave them as strings
+    if context is None:
+        context = {}
+    objid = id(value)
+    if objid in context:
+        return '<...>'
+    context[objid] = 1
+    if any(value is s for s in stack):
+        ret = 'cycle'
+    transform_rec = lambda o: transform(o, stack + [value], context)
     if isinstance(value, (tuple, list, set, frozenset)):
-        return type(value)(transform(o) for o in value)
+        ret = type(value)(transform_rec(o) for o in value)
     elif isinstance(value, uuid.UUID):
-        return repr(value)
+        ret = repr(value)
     elif isinstance(value, dict):
-        return dict((k, transform(v)) for k, v in value.iteritems())
+        ret = dict((k, transform_rec(v)) for k, v in value.iteritems())
     elif isinstance(value, unicode):
-        return to_unicode(value)
+        ret = to_unicode(value)
     elif isinstance(value, str):
         try:
-            return str(value)
+            ret = str(value)
         except:
-            return to_unicode(value)
-    elif hasattr(value, '__sentry__'):
-        return value.__sentry__()
+            ret = to_unicode(value)
+    elif not isinstance(value, (ClassType, TypeType)) and \
+            has_sentry_metadata(value):
+        ret = transform_rec(value.__sentry__())
     elif not isinstance(value, (int, bool)) and value is not None:
         # XXX: we could do transform(repr(value)) here
-        return to_unicode(value)
-    return value
+        ret = to_unicode(value)
+    else:
+        ret = value
+    del context[objid]
+    return ret
 
 def to_unicode(value):
     try:
@@ -106,7 +133,7 @@ def get_installed_apps():
     Generate a list of modules in settings.INSTALLED_APPS.
     """
     out = set()
-    for app in settings.INSTALLED_APPS:
+    for app in django_settings.INSTALLED_APPS:
         out.add(app)
     return out
 
@@ -174,17 +201,9 @@ class cached_property(object):
             obj.__dict__[self.__name__] = value
         return value
 
-def urlread(url, get={}, post={}, headers={}, timeout=None):
-    req = urllib2.Request(url, urllib.urlencode(get), headers=headers)
-    try:
-        response = urllib2.urlopen(req, urllib.urlencode(post), timeout).read()
-    except:
-        response = urllib2.urlopen(req, urllib.urlencode(post)).read()
-    return response
-
 def get_versions(module_list=None):
     if not module_list:
-        module_list = settings.INSTALLED_APPS + ['django']
+        module_list = django_settings.INSTALLED_APPS + ['django']
 
     ext_module_list = set()
     for m in module_list:
@@ -211,3 +230,70 @@ def get_versions(module_list=None):
             version = '.'.join(str(o) for o in version)
         versions[module_name] = version
     return versions
+
+def shorten(var):
+    var = transform(var)
+    if isinstance(var, basestring) and len(var) > settings.MAX_LENGTH_STRING:
+        var = var[:settings.MAX_LENGTH_STRING] + '...'
+    elif isinstance(var, (list, tuple, set, frozenset)) and len(var) > settings.MAX_LENGTH_LIST:
+        # TODO: we should write a real API for storing some metadata with vars when
+        # we get around to doing ref storage
+        # TODO: when we finish the above, we should also implement this for dicts
+        var = list(var)[:settings.MAX_LENGTH_LIST] + ['...', '(%d more elements)' % (len(var) - settings.MAX_LENGTH_LIST,)]
+    return var
+
+def is_float(var):
+    try:
+        float(var)
+    except ValueError:
+        return False
+    return True
+
+def get_signature(message, timestamp):
+    return hmac.new(settings.KEY, '%s %s' % (timestamp, message), sha_constructor).hexdigest()
+
+def get_auth_header(signature, timestamp, client):
+    return 'Sentry sentry_signature=%s, sentry_timestamp=%s, sentry_client=%s' % (
+        signature,
+        timestamp,
+        sentry.VERSION,
+    )
+
+def parse_auth_header(header):
+    return dict(map(lambda x: x.strip().split('='), header.split(' ', 1)[1].split(',')))
+
+class MockRequest(object):
+    GET = {}
+    POST = {}
+    META = {}
+    COOKIES = {}
+    FILES = {}
+    raw_post_data = ''
+    url = ''
+    
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+    
+    def __repr__(self):
+        # Since this is called as part of error handling, we need to be very
+        # robust against potentially malformed input.
+        try:
+            get = pformat(self.GET)
+        except:
+            get = '<could not parse>'
+        try:
+            post = pformat(self.POST)
+        except:
+            post = '<could not parse>'
+        try:
+            cookies = pformat(self.COOKIES)
+        except:
+            cookies = '<could not parse>'
+        try:
+            meta = pformat(self.META)
+        except:
+            meta = '<could not parse>'
+        return '<Request\nGET:%s,\nPOST:%s,\nCOOKIES:%s,\nMETA:%s>' % \
+            (get, post, cookies, meta)
+
+    def build_absolute_uri(self): return self.url

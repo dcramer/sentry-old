@@ -1,1 +1,1 @@
-from tests import *
+from sentry.tests.tests import *

@@ -2,6 +2,7 @@
 import logging
 import sys
 from os.path import dirname, abspath, join
+from optparse import OptionParser
 
 logging.getLogger('sentry').addHandler(logging.StreamHandler())
 
@@ -10,6 +11,11 @@ from django.conf import settings
 if not settings.configured:
     settings.configure(
         DATABASE_ENGINE='sqlite3',
+        DATABASES={
+            'default': {
+                'ENGINE': 'sqlite3',
+            },
+        },
         # HACK: this fixes our threaded runserver remote tests
         # DATABASE_NAME='test_sentry',
         # TEST_DATABASE_NAME='test_sentry',
@@ -22,7 +28,7 @@ if not settings.configured:
             # Included to fix Disqus' test Django which solves IntegrityMessage case
             'django.contrib.contenttypes',
 
-            'paging',
+            'south',
             'djcelery', # celery client
             # 'haystack',
 
@@ -61,14 +67,23 @@ if not settings.configured:
 
 from django.test.simple import run_tests
 
-def runtests(*test_args):
+def runtests(failfast=False, *test_args):
+    if 'south' in settings.INSTALLED_APPS:
+        from south.management.commands import patch_for_test_db_setup
+        patch_for_test_db_setup()
+
     if not test_args:
         test_args = ['sentry']
     parent = dirname(abspath(__file__))
     sys.path.insert(0, parent)
-    failures = run_tests(test_args, verbosity=1, interactive=True)
+    failures = run_tests(test_args, verbosity=1, interactive=False, failfast=failfast)
     sys.exit(failures)
 
 
 if __name__ == '__main__':
-    runtests(*sys.argv[1:])
+    parser = OptionParser()
+    parser.add_option('--failfast', action='store_true', default=False, dest='failfast')
+
+    (options, args) = parser.parse_args()
+
+    runtests(*args, failfast=options.failfast)

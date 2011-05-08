@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 from sentry.client.models import get_client
-
+import threading
 import logging
 
 class Sentry404CatchMiddleware(object):
@@ -26,3 +26,11 @@ class SentryResponseErrorIdMiddleware(object):
             return response
         response['X-Sentry-ID'] = request.sentry['id']
         return response
+
+class SentryLogMiddleware(object):
+    # Create a threadlocal variable to store the session in for logging
+    thread = threading.local()
+
+    def process_request(self, request):
+        self.thread.request = request
+

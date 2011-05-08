@@ -1,3 +1,174 @@
+/* http://www.positioniseverything.net/easyclearing.html */
+.clearfix:after {
+    content: ".";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
+.clearfix {display: inline-block;}
+/* Hides from IE-mac \*/
+.clearfix {display: block;}
+* html .clearfix {height: 1%;}
+/* end hide from IE-mac */
+
+html * { padding:0; margin:0; }
+body * * { padding:0; }
+body {
+    font: small "Lucida Grande", "Lucida Sans", verdana, sans-serif;
+    background: #E5E5E5;
+}
+h1 a { color: inherit; text-decoration: none; }
+h2 span { font-size:80%; color:#666; font-weight:normal; }
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+}
+
+h1, h2, h3, h4, h5, h6, p, ul,
+table, form, pre, ol { margin-bottom: 20px; }
+ul { margin: 0 0 20px 20px; }
+
+a { color: #333; }
+a:visited { color: inherit; }
+
+pre {
+    display: block;
+    white-space: pre-wrap;       /* CSS-3                  */
+    white-space: -moz-pre-wrap;  /* Mozilla, since 1999    */
+    white-space: -pre-wrap;      /* Opera 4-6              */
+    white-space: -o-pre-wrap;    /* Opera 7                */
+    word-wrap: break-word;       /* Internet Explorer 5.5+ */
+}
+
+#header {
+    position: relative;
+    background: #e0ebff; border-bottom:1px solid #ddd;
+    background: #555; /* for non-css3 browsers */
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#555555', endColorstr='#222222'); /* for IE */
+    background: -webkit-gradient(linear, left top, left bottom, from(#555555), to(#222222)); /* for webkit browsers */
+    background: -moz-linear-gradient(top,  #555,  #222); /* for firefox 3.6+ */
+    border-bottom: 1px solid #000;
+}
+
+#header h1, #header h2 { margin-bottom: 0; }
+
+#header .container {
+    position: relative;
+    padding: 1em 2em;
+    max-width: 1550px;
+}
+#header .sparkline {
+    padding: 5px;
+    position: absolute;
+    right: 45px;
+    top: 20px;
+}
+
+#header h1 {
+    font-family: 'Yanone Kaffeesatz', arial, serif;
+    display: inline-block;
+    font-size: 24px;
+    line-height: 36px;
+    color: #e5e5e5;
+    text-shadow: 1px 1px 1px #333;
+    font-weight: normal;
+}
+#header h1 img { float: left; height: 36px; margin-right: 10px; }
+#header h2 {
+    font-family: 'Yanone Kaffeesatz', arial, serif;
+    display: inline-block;
+    font-size: 20px;
+    line-height: 36px;
+    margin-top: 0;
+    font-weight: normal;
+    color: #888;
+    margin-bottom: 0;
+    margin-left: 15px;
+    color: #ccc;
+}
+#header h2 span {
+    display: inline-block;
+    line-height: 36px;
+    color: #fff;
+    margin-left: 10px;
+}
+#header h2 span a {
+    text-decoration: none;
+}
+
+#account {
+    position: absolute;
+    right: 35px;
+    bottom: 6px;
+    padding-left: 20px;
+    background: #e5e5e5;
+}
+#search {
+    position: absolute;
+    right: 35px;
+    top: 1.4em;
+    width: 300px;
+}
+#search input {
+    width: 244px;
+    padding: 6px 50px 6px 6px;
+    background: #000;
+    border:1px solid #666;
+    color: #fff;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+}
+#search button {
+    cursor: pointer;
+    position: absolute;
+    right: -2px;
+    top: 0;
+    padding: 6px;
+    height: 100%;
+    line-height: 100%;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: #e0ebff;
+    background: #555; /* for non-css3 browsers */
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#555555', endColorstr='#222222'); /* for IE */
+    background: -webkit-gradient(linear, left top, left bottom, from(#555555), to(#222222)); /* for webkit browsers */
+    background: -moz-linear-gradient(top,  #555,  #222); /* for firefox 3.6+ */
+    border: 1px solid #666;
+    color: #fff;
+    -moz-border-radius: 0 3px 3px 0;
+    -webkit-border-radius: 0 3px 3px 0;
+    border-radius: 0 3px 3px 0;
+}
+#search button:hover {
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#777777', endColorstr='#555555'); /* for IE */
+    background: -webkit-gradient(linear, left top, left bottom, from(#777777), to(#555555)); /* for webkit browsers */
+    background: -moz-linear-gradient(top,  #777777,  #555555); /* for firefox 3.6+ */
+}
+
+
+.nav {
+    list-style: none;
+    margin-left: 0;
+}
+.nav a { color: inherit; }
+.nav li { display: inline; }
+.nav li a { display: inline-block; }
+
+
+#footer {
+    clear: both;
+    border-top:1px solid #ddd;
+    background-color: #e5e5e5;
+}
+#footer .container {
+    color: #666;
+    padding: 2em;
+    max-width: 1550px;
+    position: relative;
+}
+#header table { border:none; background:transparent; }
 #body, #sidebar { position: relative; }
 #body {
     overflow: hidden;
@@ -84,6 +255,45 @@
     border-radius: 0 0 5px 5px;
     -moz-border-radius: 0 0 5px 5px;
     -webkit-border-radius: 0 0 5px 5px;
+}
+
+.filter-text {
+    position: relative;
+}
+
+.filter-text p {
+    margin-bottom: 0;
+}
+
+.filter-text input[type=text] {
+    margin: 2px;
+    border: 0;
+    background: transparent;
+    padding: 8px;
+    color: #666;
+    width: 277px;
+    font-size: 1em;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.filter-text .submit {
+    position: absolute;
+    right: 14px;
+    top: 12px;
+    opacity: .6;
+}
+
+.filter-text .search-submit {
+    display: block;
+    width: 12px;
+    height: 12px;
+    background: #fff url(../images/search.png);
+    text-indent: -9999em;
+    border: none;
+    cursor: pointer;
 }
 
 #chart { margin-bottom: 20px; }
@@ -222,7 +432,7 @@ dl.flat dd {
 
 .messages .tag { display: inline-block; padding: 2px 5px; background: #eaeaea; margin-right: 5px;}
 .messages .traceback { display: none; }
-.messages li { padding: 8px; position: relative; padding-right: 50px; overflow: hidden;}
+.messages li { clear: both; padding: 8px; position: relative; padding-right: 50px; overflow: hidden; }
 .messages .row1 { background: #f9f9f9; }
 .messages .hidden {
     position: absolute;
@@ -345,46 +555,6 @@ dl.flat dd {
     background: inherit;
 }
 
-.filter-text {
-    background: rgba(255,255,255,.50);
-    -moz-border-radius: 18px;
-    -webkit-border-radius: 18px;
-    border-radius: 18px;
-    -moz-box-shadow: inset 0 1px 5px rgba(0,0,0, .30), 0 1px 0 #fff;
-    -webkit-box-shadow: inset 0 1px 5px rgba(0,0,0, .30), 0 1px 0 #fff;
-    position: relative;
-    margin-bottom: 18px;
-}
-
-.filter-text p {
-    margin-bottom: 0;
-}
-
-.filter-text .textfield input {
-    border: 0;
-    background: transparent;
-    padding: 8px 16px;
-    font-size: 16px;
-    color: #666;
-    width: 267px;
-}
-
-.filter-text .submit {
-    position: absolute;
-    right: 16px;
-    top: 12px;
-    opacity: .6;
-}
-
-.search-submit {
-    display: block;
-    width: 12px;
-    height: 12px;
-    background: #fff url(../images/search.png);
-    text-indent: -9999em;
-    border: none;
-}
-
 .login-area {
     width: 300px;
     margin: 50px auto;
@@ -447,4 +617,37 @@ h2 .morelink { text-decoration: none; }
 
 #full-message {
     line-height: 1.5em;
+}
+
+/* breadcrumbs */
+
+#breadcrumbs {
+    font-size: 0.9em;
+    height: 16px;
+    line-height: 16px;
+    margin: 0 0 20px;
+}
+#breadcrumbs li {
+    list-style: none;
+    display: inline;
+    float: left;
+}
+#breadcrumbs a,
+#breadcrumbs span {
+    font-weight: normal;
+    background: url('../images/breadcrumb.png') right center no-repeat;
+    padding: 0 12px 0 0;
+    margin: 0 8px 0 0;
+}
+#breadcrumbs li:last-child {
+    background: none;
+    font-weight: bold;
+}
+#breadcrumbs li:last-child a,
+#breadcrumbs li:last-child span {
+    background: none;
+    text-decoration: none;
+    font-weight: inherit;
+    padding-right: 0;
+    margin-right: 0;
 }

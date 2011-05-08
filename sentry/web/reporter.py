@@ -70,43 +70,12 @@ class ImprovedExceptionReporter(ExceptionReporter):
             'exception_value': smart_unicode(self.exc_value, errors='replace'),
             'unicode_hint': unicode_hint,
             'frames': frames,
-            'lastframe': frames[-1],
+            'lastframe': frames and frames[-1] or None,
             'request': self.request,
             'template_info': self.template_info,
             'template_does_not_exist': self.template_does_not_exist,
         })
         return t.render(c)
-
-class FakeRequest(object):
-    GET = {}
-    POST = {}
-    META = {}
-    COOKIES = {}
-    FILES = {}
-    
-    def __repr__(self):
-        # Since this is called as part of error handling, we need to be very
-        # robust against potentially malformed input.
-        try:
-            get = pformat(self.GET)
-        except:
-            get = '<could not parse>'
-        try:
-            post = pformat(self.POST)
-        except:
-            post = '<could not parse>'
-        try:
-            cookies = pformat(self.COOKIES)
-        except:
-            cookies = '<could not parse>'
-        try:
-            meta = pformat(self.META)
-        except:
-            meta = '<could not parse>'
-        return '<Request\nGET:%s,\nPOST:%s,\nCOOKIES:%s,\nMETA:%s>' % \
-            (get, post, cookies, meta)
-
-    def build_absolute_uri(self): return self.url
 
 TECHNICAL_500_TEMPLATE = """
 <div id="summary">
@@ -126,10 +95,12 @@ TECHNICAL_500_TEMPLATE = """
       <th>Exception Value:</th>
       <td><pre>{{ exception_value|escape }}</pre></td>
     </tr>
+    {% if lastframe %}
     <tr>
       <th>Exception Location:</th>
       <td>{{ lastframe.filename|escape }} in {{ lastframe.function|escape }}, line {{ lastframe.lineno }}</td>
     </tr>
+    {% endif %}
   </table>
 </div>
 {% if unicode_hint %}

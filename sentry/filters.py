@@ -1,10 +1,12 @@
 # Widget api is pretty ugly
-from django.conf import settings
+from __future__ import absolute_import
+
+from django.conf import settings as django_settings
 from django.utils.datastructures import SortedDict
 from django.utils.safestring import mark_safe
 from django.utils.html import escape
 
-from sentry import conf
+from sentry.conf import settings
 
 class Widget(object):
     def __init__(self, filter, request):
@@ -19,7 +21,7 @@ class TextWidget(Widget):
         return mark_safe('<div class="filter-text"><p class="textfield"><input type="text" name="%(name)s" value="%(value)s" placeholder="%(placeholder)s"/></p><p class="submit"><input type="submit" class="search-submit"/></p></div>' % dict(
             name=self.filter.get_query_param(),
             value=escape(value),
-            placeholder=escape(placeholder),
+            placeholder=escape(placeholder or 'enter %s' % self.filter.label.lower()),
         ))
 
 class ChoiceWidget(Widget):
@@ -86,10 +88,10 @@ class SentryFilter(object):
                                                      .order_by('value'))
     
     def get_query_set(self, queryset):
-        from indexer.models import Index
+        from sentry.models import MessageIndex
         kwargs = {self.column: self.get_value()}
         if self.column.startswith('data__'):
-            return Index.objects.get_for_queryset(queryset, **kwargs)
+            return MessageIndex.objects.get_for_queryset(queryset, **kwargs)
         return queryset.filter(**kwargs)
     
     def process(self, data):
@@ -99,20 +101,6 @@ class SentryFilter(object):
     def render(self):
         widget = self.get_widget()
         return widget.render(self.get_value())
-
-class SearchFilter(SentryFilter):
-    label = 'Search'
-    column = 'content'
-    widget = TextWidget
-    show_label = False
-    
-    def get_query_set(self, queryset):
-        # this is really just a hack
-        return queryset
-
-    def render(self):
-        widget = self.get_widget()
-        return widget.render(self.get_value(), placeholder='search query or message id')
 
 class StatusFilter(SentryFilter):
     label = 'Status'
@@ -143,17 +131,17 @@ class SiteFilter(SentryFilter):
     def process(self, data):
         if 'site' in data:
             return data
-        if conf.SITE is None:
-            if 'django.contrib.sites' in settings.INSTALLED_APPS:
+        if settings.SITE is None:
+            if 'django.contrib.sites' in django_settings.INSTALLED_APPS:
                 from django.contrib.sites.models import Site
                 try:
-                    conf.SITE = Site.objects.get_current().name
+                    settings.SITE = Site.objects.get_current().name
                 except Site.DoesNotExist:
-                    conf.SITE = ''
+                    settings.SITE = ''
             else:
-                conf.SITE = ''
-        if conf.SITE:
-            data['site'] = conf.SITE
+                settings.SITE = ''
+        if settings.SITE:
+            data['site'] = settings.SITE
         return data
 
     def get_query_set(self, queryset):
@@ -164,4 +152,7 @@ class LevelFilter(SentryFilter):
     column = 'level'
     
     def get_choices(self):
-        return SortedDict((str(k), v) for k, v in conf.LOG_LEVELS)
+        return SortedDict((str(k), v) for k, v in settings.LOG_LEVELS)
+    
+    def get_query_set(self, queryset):
+        return queryset.filter(level__gte=self.get_value())

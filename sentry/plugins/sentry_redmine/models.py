@@ -7,7 +7,6 @@ from django.shortcuts import render_to_response
 from django.utils import simplejson
 from django.utils.safestring import mark_safe
 
-from sentry.helpers import urlread
 from sentry.models import GroupedMessage
 from sentry.plugins import GroupActionProvider
 from sentry.plugins.sentry_redmine import conf
@@ -70,7 +69,6 @@ class CreateRedmineIssue(GroupActionProvider):
                     else:
                         form.errors['__all__'] = 'Bad response from Redmine: %s %s' % (e.code, e.msg)
                 except urllib2.URLError, e:
-                    print dir(e), e.__dict__
                     form.errors['__all__'] = 'Unable to reach Redmine host: %s' % (e.reason,)
                 else:
                     data = simplejson.loads(response)

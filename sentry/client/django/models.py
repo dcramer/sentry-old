@@ -7,7 +7,8 @@ import warnings
 from django.core.signals import got_request_exception
 from django.db import transaction
 
-from sentry import conf
+from sentry.conf import settings
+from sentry.client import get_client
 
 logger = logging.getLogger('sentry.errors')
 
@@ -16,7 +17,7 @@ def sentry_exception_handler(request=None, **kwargs):
     try:
         exc_type, exc_value, exc_traceback = sys.exc_info()
 
-        if conf.DEBUG or getattr(exc_type, 'skip_sentry', False):
+        if settings.DEBUG or getattr(exc_type, 'skip_sentry', False):
             return
 
         if transaction.is_dirty():

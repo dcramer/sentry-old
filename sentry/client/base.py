@@ -1,12 +1,16 @@
 from __future__ import absolute_import
 
+import base64
 import datetime
 import logging
 import simplejson
+import time
 import urllib2
 
-from sentry import conf
-from sentry.helpers import construct_checksum, urlread, force_unicode
+import sentry
+from sentry.conf import settings
+from sentry.helpers import construct_checksum, force_unicode, get_signature, \
+                           get_auth_header
 
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
@@ -23,16 +27,28 @@ class SentryClient(object):
 
         return event_processor().store(tags, data, date, time_spent, event_id)
 
+    def send_remote(self, url, data, headers={}):
+        req = urllib2.Request(url, headers=headers)
+        try:
+            response = urllib2.urlopen(req, data, settings.REMOTE_TIMEOUT).read()
+        except:
+            response = urllib2.urlopen(req, data).read()
+        return response
+
     def send(self, **kwargs):
         "Sends the message to the server."
-        if conf.REMOTE_URL:
-            for url in conf.REMOTE_URL:
-                data = {
-                    'data': simplejson.dumps(kwargs).encode('zlib'),
-                    'key': conf.KEY,
+        if settings.REMOTE_URL:
+            for url in settings.REMOTE_URL:
+                message = base64.b64encode(simplejson.dumps(kwargs).encode('zlib'))
+                timestamp = time.time()
+                signature = get_signature(message, timestamp)
+                headers={
+                    'Authorization': get_auth_header(signature, timestamp, '%s/%s' % (self.__class__.__name__, sentry.VERSION)),
+                    'Content-Type': 'application/octet-stream',
                 }
+                
                 try:
-                    urlread(url, post=data, timeout=conf.REMOTE_TIMEOUT)
+                    return self.send_remote(url=url, data=message, headers=headers)
                 except urllib2.HTTPError, e:
                     body = e.read()
                     self.logger.error('Unable to reach Sentry log server: %s (url: %%s, body: %%s)' % (e,), url, body,
@@ -51,14 +67,14 @@ class SentryClient(object):
         Creates an error log for a ``logging`` module ``record`` instance.
         """
         for k in ('url', 'view', 'request', 'data'):
-            if k not in kwargs:
+            if not kwargs.get(k):
                 kwargs[k] = record.__dict__.get(k)
 
         kwargs.update({
             'logger': record.name,
             'level': record.levelno,
             'message': force_unicode(record.msg),
-            'server_name': conf.NAME,
+            'server_name': settings.NAME,
         })
 
         # construct the checksum with the unparsed message

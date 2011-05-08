@@ -1,5 +1,3 @@
-{% load sentry_helpers %}
-
 <li class="{% cycle 'row1' 'row2' %} level-{{ group.level }}{% if priority %} priority-{{ priority }}{% endif %}" id="group_{{ group.pk }}" data-sentry-count="{{ group.times_seen }}">
     <span class="count count-digits-{{ group.times_seen|num_digits }}">{{ group.count }}</span>
     <h3><a href="{% url sentry:group group.pk %}">{{ group.message }}</a></h3>
@@ -12,6 +10,6 @@
     </p>
     <a href="{% url sentry:group group.pk %}" class="row_link"></a>
     {% if group.status == 0 %}
-        <a href="{% url sentry:ajax %}?op=resolve&amp;gid={{ group.pk }}" onclick="sentryResolve({{ group.pk }});returnfalse;" class="button resolve_button hidden">&#10003;</a>
+        <a href="{% url sentry-ajax %}?op=resolve&amp;gid={{ group.pk }}" onclick="Sentry.stream.resolve({{ group.pk }});return false;" class="button resolve_button hidden">&#10003;</a>
     {% endif %}
 </li>
