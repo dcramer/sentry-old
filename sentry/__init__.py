@@ -18,7 +18,7 @@ TODO: How do we specify grouping functions?
       - this should replace get_event_hash
 
 Sentry 2 stores events based on tag groups. These groups are defined at
-runtime so that future messages can be stored in an optimized pattern
+runtime so that future events can be stored in an optimized pattern
 for quick retrieval and aggregation.
 
 An event consists of anything an extension allows, but but could include

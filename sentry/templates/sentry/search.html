@@ -18,15 +18,15 @@
         </div>
     </div>
 
-    {% if message_list %}
-        <ul class="messages" id="message_list">
-            {% for group, priority in message_list %}
+    {% if event_list %}
+        <ul class="events" id="event_list">
+            {% for group, priority in event_list %}
                 {% include "sentry/partial/_group.html" %}
             {% endfor %}
         </ul>
     {% else %}
-        <ul class="messages" id="message_list">
-            <li class="no-messages" id="no_messages">{{ gettext('No messages match your query.') }}</li>
+        <ul class="events" id="event_list">
+            <li class="no-events" id="no_events">{{ gettext('No events match your query.') }}</li>
         </ul>
     {% endif %}
 {% endblock %}

@@ -643,10 +643,10 @@ class SentryViewsTest(TestCase):
         resp = self.client.get(reverse('sentry'), follow=True)
         self.assertEquals(resp.status_code, 200)
         self.assertTemplateUsed(resp, 'sentry/index.html')
-        group = resp.context['message_list'][0]
+        group = resp.context['event_list'][0]
         self.assertEquals(group.times_seen, 7)
         self.assertEquals(group.class_name, 'AttributeError')
-        self.assertEquals(len(resp.context['message_list']), 4)
+        self.assertEquals(len(resp.context['event_list']), 4)
 
     def testGroup(self):
         self.client.login(username='admin', password='admin')
@@ -776,11 +776,11 @@ class SentryFeedsTest(TestCase):
     urls = 'sentry.tests.urls'
 
     def testMessageFeed(self):
-        response = self.client.get(reverse('sentry-feed-messages'))
+        response = self.client.get(reverse('sentry-feed-events'))
         self.assertEquals(response.status_code, 200)
         self.assertTrue(response.content.startswith('<?xml version="1.0" encoding="utf-8"?>'))
         self.assertTrue('<link>http://testserver/</link>' in response.content)
-        self.assertTrue('<title>log messages</title>' in response.content)
+        self.assertTrue('<title>log events</title>' in response.content)
         self.assertTrue('<link>http://testserver/group/1</link>' in response.content, response.content)
         self.assertTrue('<title>TypeError: exceptions must be old-style classes or derived from BaseException, not NoneType</title>' in response.content)
 

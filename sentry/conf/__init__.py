@@ -79,7 +79,7 @@ class SentryConfig(object):
             'name': 'Exceptions',
             'event': 'sentry.events.ExceptionEvent',
         },
-        'messages': {
+        'events': {
             'name': 'Messages',
             'event': 'sentry.events.MessageEvent',
         },

@@ -31,7 +31,7 @@
 {% endblock %}
 
 {% block main %}
-    <ul class="messages" id="message_list">
+    <ul class="events" id="event_list">
         <li class="level-{{ group.level }}{% if priority %} priority-{{ priority }}{% endif %}" id="group_{{ group.pk }}" data-sentry-count="{{ group.times_seen }}">
             <span class="count count-digits-{{ group.times_seen|num_digits }}">{{ group.count }}</span>
             <h3>{{ group.message }}</h3>
@@ -51,7 +51,7 @@
 
     <ul class="nav" id="group_nav">
         <li{% if page == 'details' %} class="active"{% endif %}><a href="{{ url_for('group_details', group_id=group.pk) }}">Details</a></li>
-        <li{% if page == 'messages' %} class="active"{% endif %}><a href="{{ url_for('group_message_list', group_id=group.pk) }}">Messages</a></li>
+        <li{% if page == 'events' %} class="active"{% endif %}><a href="{{ url_for('group_event_list', group_id=group.pk) }}">Messages</a></li>
         {% for label, link, is_active in group|get_panels() %}
             <li{% if is_active %} class="active"{% endif %}><a href="{{ link }}">{{ label }}</a></li>
         {% endfor %}

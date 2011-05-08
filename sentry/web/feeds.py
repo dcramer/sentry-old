@@ -32,7 +32,7 @@ class MessageFeed(object):
         return HttpResponse(feed.writeString('utf-8'), mimetype='application/xml')
 
     def get_title(self, request):
-        return _('log messages')
+        return _('log events')
 
     def get_link(self, request):
         return reverse('sentry')

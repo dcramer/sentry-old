@@ -8,6 +8,7 @@ except ImportError:
 import datetime
 import logging
 import re
+import simplejson
 import time
 import warnings
 import zlib
@@ -21,8 +22,7 @@ from sentry.utils import get_filters, is_float, get_signature, parse_auth_header
 from sentry.utils.shortcuts import get_object_or_404
 from sentry.models import Group, Event
 from sentry.plugins import GroupActionProvider
-# from sentry.templatetags.sentry_helpers import with_priority
-from sentry.web.reporter import ImprovedExceptionReporter
+from sentry.web.templatetags import with_priority
 
 uuid_re = re.compile(r'^[a-z0-9]{32}$')
 
@@ -63,28 +63,28 @@ def search(request):
         if uuid_re.match(query):
             # Forward to message if it exists
             try:
-                message = Message.objects.get(message_id=query)
-            except Message.DoesNotExist:
+                event = Event.objects.get(query)
+            except Event.DoesNotExist:
                 pass
             else:
-                return redirect(message.get_absolute_url())
+                return redirect(event.get_absolute_url())
         elif not has_search:
             return render_template('sentry/invalid_message_id.html')
         else:
-            message_list = get_search_query_set(query)
+            event_list = get_search_query_set(query)
     else:
-        message_list = Group.objects.none()
+        event_list = Group.objects.none()
     
     sort = request.args.get('sort')
     if sort == 'date':
-        message_list = message_list.order_by('-last_seen')
+        event_list = event_list.order_by('-last_seen')
     elif sort == 'new':
-        message_list = message_list.order_by('-first_seen')
+        event_list = event_list.order_by('-first_seen')
     else:
         sort = 'relevance'
 
     return render_template('sentry/search.html', {
-        'message_list': message_list,
+        'event_list': event_list,
         'query': query,
         'sort': sort,
         'request': request,
@@ -105,16 +105,18 @@ def index():
     query = request.args.get('content')
     is_search = query
 
-    message_list = Group.objects.all()
+    event_list = Group.objects.all()
 
     sort = request.args.get('sort')
     if sort == 'date':
-        message_list = message_list.order_by('-last_seen')
+        event_list = event_list.order_by('-last_seen')
     elif sort == 'new':
-        message_list = message_list.order_by('-first_seen')
+        event_list = event_list.order_by('-first_seen')
+    elif sort == 'count':
+        event_list = event_list.order_by('-count')
     else:
         sort = 'priority'
-        message_list = message_list.order_by('-score')
+        event_list = event_list.order_by('-score')
 
     filters = []
 
@@ -123,7 +125,7 @@ def index():
     #     if not filter_.is_set():
     #         continue
     #     any_filter = True
-        # message_list = filter_.get_query_set(message_list)
+        # event_list = filter_.get_query_set(event_list)
 
     today = datetime.datetime.now()
 
@@ -131,7 +133,7 @@ def index():
 
     return render_template('sentry/index.html', **{
         'has_realtime': has_realtime,
-        'message_list': message_list,
+        'event_list': event_list,
         'today': today,
         'query': query,
         'sort': sort,
@@ -150,72 +152,55 @@ def ajax_handler():
         for filter_ in get_filters():
             filters.append(filter_(request))
 
-        query = request.args.get('content')
-        is_search = query
-
-        if is_search:
-            message_list = self.get_search_query_set(query)
-        else:
-            message_list = GroupedMessage.objects.extra(
-                select={
-                    'score': GroupedMessage.get_score_clause(),
-                }
-            )
-            if query:
-                # You really shouldnt be doing this
-                message_list = message_list.filter(
-                    Q(view__icontains=query) \
-                    | Q(message__icontains=query) \
-                    | Q(traceback__icontains=query)
-                )
+        event_list = Group.objects
 
         sort = request.args.get('sort')
         if sort == 'date':
-            message_list = message_list.order_by('-last_seen')
+            event_list = event_list.order_by('-last_seen')
         elif sort == 'new':
-            message_list = message_list.order_by('-first_seen')
+            event_list = event_list.order_by('-first_seen')
+        elif sort == 'count':
+            event_list = event_list.order_by('-count')
         else:
             sort = 'priority'
-            if not is_search:
-                message_list = message_list.order_by('-score', '-last_seen')
+            event_list = event_list.order_by('-score')
 
-        for filter_ in filters:
-            if not filter_.is_set():
-                continue
-            message_list = filter_.get_query_set(message_list)
+        # for filter_ in filters:
+        #     if not filter_.is_set():
+        #         continue
+        #     event_list = filter_.get_query_set(event_list)
 
         data = [
             (m.pk, {
-                'html': self.render_to_string('sentry/partial/_group.html', {
+                'html': render_template('sentry/partial/_group.html', **{
                     'group': m,
                     'priority': p,
                     'request': request,
-                }, request),
+                }),
                 'count': m.times_seen,
                 'priority': p,
-            }) for m, p in with_priority(message_list[0:15])]
+            }) for m, p in with_priority(event_list[0:15])]
 
     elif op == 'resolve':
         gid = request.REQUEST.get('gid')
         if not gid:
             abort(403)
         try:
-            group = GroupedMessage.objects.get(pk=gid)
-        except GroupedMessage.DoesNotExist:
+            group = Group.objects.get(pk=gid)
+        except Group.DoesNotExist:
             abort(403)
 
-        GroupedMessage.objects.filter(pk=group.pk).update(status=1)
-        group.status = 1
+        group.update(status=1)
 
         if not request.is_ajax():
             return redirect(request.environ['HTTP_REFERER'])
 
         data = [
             (m.pk, {
-                'html': self.render_to_string('sentry/partial/_group.html', {
+                'html': render_template('sentry/partial/_group.html', **{
                     'group': m,
                     'request': request,
-                }, request),
+                }),
                 'count': m.times_seen,
             }) for m in [group]]
     else:
@@ -248,40 +233,25 @@ def group_details(group_id):
     })
 
 @login_required
-@app.route('/group/<group_id>/messages/')
-def group_message_list(group_id):
-    group = get_object_or_404(GroupedMessage, pk=group_id)
+@app.route('/group/<group_id>/events/')
+def group_event_list(group_id):
+    group = get_object_or_404(Group, pk=group_id)
 
-    message_list = group.message_set.all().order_by('-datetime')
+    event_list = group.get_relations(Event)
 
-    page = 'messages'
+    page = 'events'
 
-    return render_template('sentry/group/message_list.html', **{
-        'page': 'messages',
+    return render_template('sentry/group/event_list.html', **{
+        'page': 'events',
         'group': group,
-        'message_list': message_list,
+        'event_list': event_list,
     })
 
 @login_required
 @app.route('/group/<group_id>/events/<event_id>/')
 def group_message_details(group_id, event_id):
-    group = get_object_or_404(GroupedMessage, pk=group_id)
-
-    message = get_object_or_404(group.message_set, pk=message_id)
-
-    if '__sentry__' in message.data:
-        module, args, frames = message.data['__sentry__']['exc']
-        message.class_name = str(message.class_name)
-        # We fake the exception class due to many issues with imports/builtins/etc
-        exc_type = type(message.class_name, (Exception,), {})
-        exc_value = exc_type(message.message)
-
-        exc_value.args = args
-
-        reporter = ImprovedExceptionReporter(message.request, exc_type, exc_value, frames, message.data['__sentry__'].get('template'))
-        traceback = mark_safe(reporter.get_traceback_html())
-    elif group.traceback:
-        traceback = mark_safe('<pre>%s</pre>' % (group.traceback,))
+    group = get_object_or_404(Group, pk=group_id)
+    event = get_object_or_404(Event, pk=group_id)
 
     def iter_data(obj):
         for k, v in obj.data.iteritems():
@@ -289,12 +259,16 @@ def group_message_details(group_id, event_id):
                 continue
             yield k, v
 
-    return render_template('sentry/group/message.html', **{
-        'page': 'messages',
-        'json_data': iter_data(message),
+    # Render our event's custom output
+    processor = event.get_processor()
+    event_html = Markup(processor.to_html(event, event.data.get('__event__')))
+
+    return render_template('sentry/group/event.html', **{
+        'page': 'events',
+        'json_data': iter_data(event),
         'group': group,
-        'message': message,
-        'traceback': traceback,
+        'event': event,
+        'event_html': event_html,
     })
 
 @app.route('/store/', methods=['POST'])
@@ -366,7 +340,7 @@ def store():
         abort(403, 'Bad data reconstructing object (%s, %s)' % (e.__class__.__name__, e))
 
     # XXX: ensure keys are coerced to strings
-    data = dict((smart_str(k), v) for k, v in data.iteritems())
+    data = dict((str(k), v) for k, v in data.iteritems())
 
     if 'timestamp' in data:
         if is_float(data['timestamp']):
@@ -378,13 +352,15 @@ def store():
                 format = '%Y-%m-%dT%H:%M:%S'
             data['timestamp'] = datetime.datetime.strptime(data['timestamp'], format)
 
-    GroupedMessage.objects.from_kwargs(**data)
+    # TODO
+    store()
     
     return ''
 
 @login_required
+@app.route('/group/<group_id>/<path:slug>')
 def group_plugin_action(request, group_id, slug):
-    group = get_object_or_404(GroupedMessage, pk=group_id)
+    group = get_object_or_404(Group, pk=group_id)
     
     try:
         cls = GroupActionProvider.plugins[slug]
@@ -393,4 +369,4 @@ def group_plugin_action(request, group_id, slug):
     response = cls(group_id)(request, group)
     if response:
         return response
-    return redirect(request.META.get('HTTP_REFERER') or reverse('sentry'))
+    return redirect(request.environ.get('HTTP_REFERER') or url_for('index'))

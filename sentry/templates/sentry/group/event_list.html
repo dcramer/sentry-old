@@ -2,16 +2,16 @@
 
 {% block inner %}
     <h2>{{ gettext('Message List') }}</h2>
-    {% paginate message_list from request as message_list per_page 15 %}
+    {% paginate event_list from request as event_list per_page 15 %}
     <div class="clearfix">
-        {{ message_list.paging }}
+        {{ event_list.paging }}
     </div>
-    <ul class="messages" id="message_list">
-        {% for message in message_list.objects %}
+    <ul class="events" id="event_list">
+        {% for message in event_list.objects %}
             {% include "sentry/partial/_message.html" %}
         {% endfor %}
     </ul>
     <div class="clearfix">
-        {{ message_list.paging }}
+        {{ event_list.paging }}
     </div>
 {% endblock %}

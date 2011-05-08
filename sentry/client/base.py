@@ -95,6 +95,6 @@ class SentryClient(object):
         )
 
 class DummyClient(SentryClient):
-    "Sends messages into an empty void"
+    "Sends events into an empty void"
     def send(self, **kwargs):
         return None
