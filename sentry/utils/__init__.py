@@ -7,8 +7,6 @@ import warnings
 from pprint import pformat
 from types import ClassType, TypeType
 
-from flask import current_app as app
-
 import sentry
 from sentry.utils.encoding import force_unicode
 
@@ -19,7 +17,7 @@ def get_filters():
     if _FILTER_CACHE is None:
         
         filters = []
-        for filter_ in app.config['FILTERS']:
+        for filter_ in sentry.app.config['FILTERS']:
             if filter_.endswith('sentry.filters.SearchFilter'):
                 continue
             module_name, class_name = filter_.rsplit('.', 1)
@@ -180,7 +178,7 @@ class cached_property(object):
             obj.__dict__[self.__name__] = value
         return value
 
-def get_versions(module_list=None):
+def get_versions(module_list=[]):
     # TODO:
     ext_module_list = set()
     for m in module_list:
@@ -210,13 +208,13 @@ def get_versions(module_list=None):
 
 def shorten(var):
     var = transform(var)
-    if isinstance(var, basestring) and len(var) > app.config['MAX_LENGTH_STRING']:
-        var = var[:app.config['MAX_LENGTH_STRING']] + '...'
-    elif isinstance(var, (list, tuple, set, frozenset)) and len(var) > app.config['MAX_LENGTH_LIST']:
+    if isinstance(var, basestring) and len(var) > sentry.app.config['MAX_LENGTH_STRING']:
+        var = var[:sentry.app.config['MAX_LENGTH_STRING']] + '...'
+    elif isinstance(var, (list, tuple, set, frozenset)) and len(var) > sentry.app.config['MAX_LENGTH_LIST']:
         # TODO: we should write a real API for storing some metadata with vars when
         # we get around to doing ref storage
         # TODO: when we finish the above, we should also implement this for dicts
-        var = list(var)[:app.config['MAX_LENGTH_LIST']] + ['...', '(%d more elements)' % (len(var) - app.config['MAX_LENGTH_LIST'],)]
+        var = list(var)[:sentry.app.config['MAX_LENGTH_LIST']] + ['...', '(%d more elements)' % (len(var) - sentry.app.config['MAX_LENGTH_LIST'],)]
     return var
 
 def is_float(var):
@@ -227,7 +225,7 @@ def is_float(var):
     return True
 
 def get_signature(message, timestamp):
-    return hmac.new(app.config['KEY'], '%s %s' % (timestamp, message), hashlib.sha1).hexdigest()
+    return hmac.new(sentry.app.config['KEY'], '%s %s' % (timestamp, message), hashlib.sha1).hexdigest()
 
 def get_auth_header(signature, timestamp, client):
     return 'Sentry sentry_signature=%s, sentry_timestamp=%s, sentry_client=%s' % (

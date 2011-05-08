@@ -4,9 +4,8 @@ import sys
 import traceback
 import uuid
 
-from sentry import conf
-from sentry.client import client
-from sentry.helpers import get_versions, transform, shorten, varmap, get_installed_apps
+from sentry import app
+from sentry.utils import get_versions, transform, shorten, varmap
 from sentry.models import TagCount, Tag, Group, Event
 
 def store(type, *args, **kwargs):
@@ -61,7 +60,7 @@ class BaseEvent(object):
         groups = []
 
         # For each view that handles this event, we need to create a Group
-        for view in conf.VIEWS.itervalues():
+        for view in app.config['VIEWS'].itervalues():
             if view['event'] == proc_id:
                 # We only care about tags which are required for this view
 
@@ -103,8 +102,6 @@ class BaseEvent(object):
 
     def process(self, tags=[], date=None, time_spent=None, request=None, **data):
         "Processes the message before passing it on to the server"
-        from sentry.helpers import get_filters
-
         if request:
             data.update(dict(
                 s_meta=request.META,
@@ -114,7 +111,7 @@ class BaseEvent(object):
             ))
             tags.append(('url', request.build_absolute_uri()))
 
-        tags.append(('server', conf.NAME))
+        tags.append(('server', app.config['NAME']))
 
         versions = get_versions()
 
@@ -131,7 +128,7 @@ class BaseEvent(object):
                     module = m
                     version = versions[m]
 
-            data['s_view'] = view
+            # data['s_view'] = view
 
             # store our "best guess" for application version
             if version:
@@ -141,9 +138,9 @@ class BaseEvent(object):
                 })
 
         # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
-        # if conf.THRASHING_TIMEOUT and conf.THRASHING_LIMIT:
+        # if app.config['THRASHING_TIMEOUT'] and app.config['THRASHING_LIMIT']:
         #     cache_key = 'sentry:%s:%s' % (kwargs.get('class_name') or '', checksum)
-        #     added = cache.add(cache_key, 1, conf.THRASHING_TIMEOUT)
+        #     added = cache.add(cache_key, 1, app.config['THRASHING_TIMEOUT'])
         #     if not added:
         #         try:
         #             thrash_count = cache.incr(cache_key)
@@ -152,7 +149,7 @@ class BaseEvent(object):
         #             # if we are, hope that the next error has a successful
         #             # cache.incr call.
         #             thrash_count = 0
-        #         if thrash_count > conf.THRASHING_LIMIT:
+        #         if thrash_count > app.config['THRASHING_LIMIT']:
         #             return
 
         # for filter_ in get_filters():
@@ -164,7 +161,7 @@ class BaseEvent(object):
         # Make sure all data is coerced
         data = transform(data)
 
-        client.send(type=self.get_id(), tags=tags, data=data, date=date, time_spent=time_spent, event_id=event_id)
+        app.client.send(type=self.get_id(), tags=tags, data=data, date=date, time_spent=time_spent, event_id=event_id)
 
         return event_id
 
@@ -218,9 +215,10 @@ class ExceptionEvent(BaseEvent):
         exc_frames = varmap(shorten, reporter.get_traceback_frames())
 
         # This should be cached
-        modules = get_installed_apps()
-        if conf.INCLUDE_PATHS:
-            modules = set(list(modules) + conf.INCLUDE_PATHS)
+        # modules = get_installed_apps()
+        modules = []
+        if app.config['INCLUDE_PATHS']:
+            modules = set(list(modules) + app.config['INCLUDE_PATHS'])
 
         def iter_tb_frames(tb):
             while tb:
@@ -245,7 +243,7 @@ class ExceptionEvent(BaseEvent):
             except:
                 continue
             if contains(modules, view):
-                if not (contains(conf.EXCLUDE_PATHS, view) and best_guess):
+                if not (contains(app.config['EXCLUDE_PATHS'], view) and best_guess):
                     best_guess = view
             elif best_guess:
                 break

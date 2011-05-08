@@ -7,8 +7,7 @@ except ImportError:
 import datetime
 import hashlib
 
-from flask import current_app as app
-
+from sentry import app
 from sentry.db import models
 from sentry.utils import cached_property, MockRequest
 

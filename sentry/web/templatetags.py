@@ -1,31 +1,19 @@
-# XXX: Import django-paging's template tags so we dont have to worry about
-#      INSTALLED_APPS
-from django import template
-from django.db.models import Count
-from django.utils import simplejson
-from django.utils.safestring import mark_safe
-from django.template import RequestContext
-from django.template.defaultfilters import stringfilter
-from django.template.loader import render_to_string
-from paging.helpers import paginate as paginate_func
-from sentry.utils import get_db_engine
+from flaskext.babel import ngettext, gettext
+from sentry import app
 from sentry.plugins import GroupActionProvider
-from templatetag_sugar.register import tag
-from templatetag_sugar.parser import Name, Variable, Constant, Optional
 
 import datetime
+import simplejson
 
-register = template.Library()
-
-@register.filter
+@app.template_filter()
 def as_sorted(value):
     return sorted(value)
 
-@register.filter
+@app.template_filter()
 def is_dict(value):
     return isinstance(value, dict)
 
-@register.filter
+@app.template_filter()
 def with_priority(result_list, key='score'):
     if result_list:
         if isinstance(result_list[0], dict):
@@ -49,22 +37,17 @@ def with_priority(result_list, key='score'):
                 priority = 'verylow'
             yield result, priority
 
-@register.filter
+@app.template_filter()
 def num_digits(value):
     return len(str(value))
 
-@register.filter
+@app.template_filter()
 def chart_data(group, max_days=90):
+    return {}
     hours = max_days*24
 
     today = datetime.datetime.now().replace(microsecond=0, second=0, minute=0)
     min_date = today - datetime.timedelta(hours=hours)
-
-    if hasattr(group, '_state'):
-        from django.db import connections
-        conn = connections[group._state.db]
-    else:
-        from django.db import connection as conn
 
     if get_db_engine(getattr(conn, 'alias', 'default')).startswith('oracle'):
         method = conn.ops.date_trunc_sql('hh24', 'datetime')
@@ -92,17 +75,16 @@ def chart_data(group, max_days=90):
         'categories': [str(today-datetime.timedelta(hours=d)) for d in xrange(first_seen, -1, -1)],
     }
 
-@register.filter
+@app.template_filter()
 def to_json(data):
     return simplejson.dumps(data)
 
-@register.simple_tag
+@app.context_processor
 def sentry_version():
     import sentry
+    return {'sentry_version': sentry.VERSION}
 
-    return sentry.VERSION
-
-@register.filter
+@app.template_filter()
 def get_actions(group, request):
     action_list = []
     for cls in GroupActionProvider.plugins.itervalues():
@@ -111,7 +93,7 @@ def get_actions(group, request):
     for action in action_list:
         yield action[0], action[1], request.path == action[1]
 
-@register.filter
+@app.template_filter()
 def get_panels(group, request):
     panel_list = []
     for cls in GroupActionProvider.plugins.itervalues():
@@ -120,7 +102,7 @@ def get_panels(group, request):
     for panel in panel_list:
         yield panel[0], panel[1], request.path == panel[1]
 
-@register.filter
+@app.template_filter()
 def get_widgets(group, request):
     for cls in GroupActionProvider.plugins.itervalues():
         inst = cls(group.pk)
@@ -128,7 +110,7 @@ def get_widgets(group, request):
         if resp:
             yield resp
 
-@register.filter
+@app.template_filter()
 def get_tags(group, request):
     tag_list = []
     for cls in GroupActionProvider.plugins.itervalues():
@@ -137,22 +119,65 @@ def get_tags(group, request):
     for tag in tag_list:
         yield tag
 
-@register.filter
-def timesince(value):
-    from django.template.defaultfilters import timesince
-    if not value:
-        return 'Never'
-    if value < datetime.datetime.now() - datetime.timedelta(days=5):
-        return value.date()
-    value = (' '.join(timesince(value).split(' ')[0:2])).strip(',')
-    if value == '0 minutes':
-        return 'Just now'
-    if value == '1 day':
-        return 'Yesterday'
-    return value + ' ago'
+@app.template_filter()
+def timesince(d, now=None):
+    """
+    Takes two datetime objects and returns the time between d and now
+    as a nicely formatted string, e.g. "10 minutes".  If d occurs after now,
+    then "0 minutes" is returned.
 
-@register.filter(name='truncatechars')
-@stringfilter
+    Units used are years, months, weeks, days, hours, and minutes.
+    Seconds and microseconds are ignored.  Up to two adjacent units will be
+    displayed.  For example, "2 weeks, 3 days" and "1 year, 3 months" are
+    possible outputs, but "2 weeks, 3 hours" and "1 year, 5 days" are not.
+
+    Adapted from http://blog.natbat.co.uk/archive/2003/Jun/14/time_since
+    """
+    if not d:
+        return 'Never'
+    
+    if d < datetime.datetime.now() - datetime.timedelta(days=5):
+        return d.date()
+    
+    chunks = (
+      (60 * 60 * 24 * 365, lambda n: ngettext('year', 'years', n)),
+      (60 * 60 * 24 * 30, lambda n: ngettext('month', 'months', n)),
+      (60 * 60 * 24 * 7, lambda n : ngettext('week', 'weeks', n)),
+      (60 * 60 * 24, lambda n : ngettext('day', 'days', n)),
+      (60 * 60, lambda n: ngettext('hour', 'hours', n)),
+      (60, lambda n: ngettext('minute', 'minutes', n))
+    )
+    # Convert datetime.date to datetime.datetime for comparison.
+    if not isinstance(d, datetime.datetime):
+        d = datetime.datetime(d.year, d.month, d.day)
+    if now and not isinstance(now, datetime.datetime):
+        now = datetime.datetime(now.year, now.month, now.day)
+
+    if not now:
+        if d.tzinfo:
+            now = datetime.datetime.now(d.tzinfo)
+        else:
+            now = datetime.datetime.now()
+
+    # ignore microsecond part of 'd' since we removed it from 'now'
+    delta = now - (d - datetime.timedelta(0, 0, d.microsecond))
+    since = delta.days * 24 * 60 * 60 + delta.seconds
+    if since <= 0:
+        # d is in the future compared to now, stop processing.
+        return d.date()
+    for i, (seconds, name) in enumerate(chunks):
+        count = since // seconds
+        if count != 0:
+            break
+    s = gettext('%(number)d %(type)s', number=count, type=name(count))
+
+    if s == '0 minutes':
+        return 'Just now'
+    if s == '1 day':
+        return 'Yesterday'
+    return s + ' ago'
+
+@app.template_filter(name='truncatechars')
 def truncatechars(value, arg):
     """
     Truncates a string after a certain number of chars.
@@ -166,23 +191,3 @@ def truncatechars(value, arg):
     if len(value) > length:
         return value[:length] + '...'
     return value
-truncatechars.is_safe = True
-
-# XXX: this is taken from django-paging so that we may render
-#      a custom template, and not worry about INSTALLED_APPS
-@tag(register, [Variable('queryset_or_list'),
-                Constant('from'), Variable('request'),
-                Optional([Constant('as'), Name('asvar')]),
-                Optional([Constant('per_page'), Variable('per_page')]),
-                Optional([Variable('is_endless')])])
-def paginate(context, queryset_or_list, request, asvar, per_page=25, is_endless=True):
-    """{% paginate queryset_or_list from request as foo[ per_page 25][ is_endless False %}"""
-    context_instance = RequestContext(request)
-    paging_context = paginate_func(request, queryset_or_list, per_page, endless=is_endless)
-    paging = mark_safe(render_to_string('sentry/partial/_pager.html', paging_context, context_instance))
-
-    result = dict(objects=paging_context['paginator'].get('objects', []), paging=paging)
-    if asvar:
-        context[asvar] = result
-        return ''
-    return result

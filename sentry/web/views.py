@@ -13,8 +13,9 @@ import warnings
 import zlib
 
 from flask import render_template, redirect, request, url_for, \
-                  Module, current_app as app, abort, Response
+                  abort, Response
 
+from sentry import app
 from sentry.utils import get_filters, is_float, get_signature, parse_auth_header
 from sentry.models import Group, Event
 from sentry.plugins import GroupActionProvider
@@ -22,8 +23,6 @@ from sentry.plugins import GroupActionProvider
 from sentry.web.reporter import ImprovedExceptionReporter
 
 uuid_re = re.compile(r'^[a-z0-9]{32}$')
-
-frontend = Module(__name__)
 
 def login_required(func):
     def wrapped(request, *args, **kwargs):
@@ -37,18 +36,18 @@ def login_required(func):
     wrapped.__name__ = func.__name__
     return wrapped
 
-@frontend.route('/auth/login/')
+@app.route('/auth/login/')
 def login(request):
     # TODO:
     pass
 
-@frontend.route('/auth/logout/')
+@app.route('/auth/logout/')
 def logout(request):
     # TODO:
     pass
 
 @login_required
-@frontend.route('/search/')
+@app.route('/search/')
 def search(request):
     try:
         page = int(request.args.get('p', 1))
@@ -72,7 +71,7 @@ def search(request):
         else:
             message_list = get_search_query_set(query)
     else:
-        message_list = GroupedMessage.objects.none()
+        message_list = Group.objects.none()
     
     sort = request.args.get('sort')
     if sort == 'date':
@@ -90,7 +89,7 @@ def search(request):
     })
 
 @login_required
-@frontend.route('/')
+@app.route('/')
 def index():
     filters = []
     for filter_ in get_filters():
@@ -152,7 +151,7 @@ def index():
     })
 
 @login_required
-@frontend.route('/api/')
+@app.route('/api/')
 def ajax_handler():
     op = request.form.get('op')
 
@@ -209,11 +208,11 @@ def ajax_handler():
     elif op == 'resolve':
         gid = request.REQUEST.get('gid')
         if not gid:
-            return HttpResponseForbidden()
+            abort(403)
         try:
             group = GroupedMessage.objects.get(pk=gid)
         except GroupedMessage.DoesNotExist:
-            return HttpResponseForbidden()
+            abort(403)
 
         GroupedMessage.objects.filter(pk=group.pk).update(status=1)
         group.status = 1
@@ -230,15 +229,13 @@ def ajax_handler():
                 'count': m.times_seen,
             }) for m in [group]]
     else:
-        return HttpResponseBadRequest()
+        abort(400)
 
-    response = HttpResponse(simplejson.dumps(data))
-    response['Content-Type'] = 'application/json'
-    return response
+    return Response(simplejson.dumps(data), mimetype='application/json')
 
 @login_required
-@frontend.route('/event/<event_id>')
-def group_details():
+@app.route('/event/<group_id>')
+def group_details(group_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
     obj = group.message_set.all().order_by('-id')[0]
@@ -270,7 +267,7 @@ def group_details():
     }, request)
 
 @login_required
-@frontend.route('/event/<event_id>/messages/')
+@app.route('/event/<event_id>/messages/')
 def group_message_list(self, request, group_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -285,7 +282,7 @@ def group_message_list(self, request, group_id):
     }, request)
 
 @login_required
-@frontend.route('/event/<event_id>/messages/<message_id>/')
+@app.route('/event/<event_id>/messages/<message_id>/')
 def group_message_details():
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
@@ -319,11 +316,8 @@ def group_message_details():
         'traceback': traceback,
     }, request)
 
-@frontend.route('/store/')
+@app.route('/store/', methods=['POST'])
 def store():
-    if request.method != 'POST':
-        return HttpResponseNotAllowed('This method only supports POST requests')
-
     if request.environ.get('AUTHORIZATION', '').startswith('Sentry'):
         auth_vars = parse_auth_header(request.META['AUTHORIZATION'])
         
@@ -346,25 +340,25 @@ def store():
 
             sig_hmac = get_signature(data, timestamp)
             if sig_hmac != signature:
-                return HttpResponseForbidden('Invalid signature')
+                abort(403, 'Invalid signature')
         else:
-            return HttpResponse('Unauthorized', status_code=401)
+            abort(401,'Unauthorized')
     else:
         data = request.form.get('data')
         if not data:
-            return HttpResponseBadRequest('Missing data')
+            abort(400, 'Missing data')
 
         format = request.form.get('format', 'pickle')
 
         if format not in ('pickle', 'json'):
-            return HttpResponseBadRequest('Invalid format')
+            abort(400, 'Invalid format')
 
         # Legacy request (deprecated as of 2.0)
         key = request.form.get('key')
         
         if key != app.config['KEY']:
             warnings.warn('A client is sending the `key` parameter, which will be removed in Sentry 2.0', DeprecationWarning)
-            return HttpResponseForbidden('Invalid credentials')
+            abort(403, 'Invalid credentials')
 
     logger = logging.getLogger('sentry.server')
 
@@ -377,7 +371,7 @@ def store():
         # This error should be caught as it suggests that there's a
         # bug somewhere in the client's code.
         logger.exception('Bad data received')
-        return HttpResponseForbidden('Bad data decoding request (%s, %s)' % (e.__class__.__name__, e))
+        abort(400, 'Bad data decoding request (%s, %s)' % (e.__class__.__name__, e))
 
     try:
         if format == 'pickle':
@@ -388,7 +382,7 @@ def store():
         # This error should be caught as it suggests that there's a
         # bug somewhere in the client's code.
         logger.exception('Bad data received')
-        return HttpResponseForbidden('Bad data reconstructing object (%s, %s)' % (e.__class__.__name__, e))
+        abort(403, 'Bad data reconstructing object (%s, %s)' % (e.__class__.__name__, e))
 
     # XXX: ensure keys are coerced to strings
     data = dict((smart_str(k), v) for k, v in data.iteritems())
@@ -405,7 +399,7 @@ def store():
 
     GroupedMessage.objects.from_kwargs(**data)
     
-    return HttpResponse()
+    return ''
 
 @login_required
 def group_plugin_action(request, group_id, slug):
@@ -414,7 +408,7 @@ def group_plugin_action(request, group_id, slug):
     try:
         cls = GroupActionProvider.plugins[slug]
     except KeyError:
-        raise Http404('Plugin not found')
+        abort(404, 'Plugin not found')
     response = cls(group_id)(request, group)
     if response:
         return response

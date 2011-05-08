@@ -38,13 +38,12 @@
             {% if has_realtime %}
                 <a id="sentry_realtime" class="realtime realtime-pause">Pause Feed</a>
             {% endif %}
-            32,413 Events Today
         </div>
     </div>
     
     {% if message_list %}
         <ul class="messages" id="message_list">
-            {% for group, priority in message_list %}
+            {% for group, priority in message_list|with_priority %}
                 {% include "sentry/partial/_group.html" %}
             {% endfor %}
         </ul>

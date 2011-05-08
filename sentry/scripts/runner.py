@@ -10,13 +10,14 @@ from eventlet import wsgi
 from optparse import OptionParser
 
 from sentry import VERSION, app
+from sentry.middleware import WSGIErrorMiddleware
 
 class SentryServer(DaemonRunner):
     pidfile_timeout = 10
     start_message = u"started with pid %(pid)d"
 
     def __init__(self, host=None, port=None, pidfile=None,
-                 logfile=None, daemonize=False):
+                 logfile=None, daemonize=False, debug=False):
         if not logfile:
             logfile = app.config['WEB_LOG_FILE']
 
@@ -39,6 +40,8 @@ class SentryServer(DaemonRunner):
         self.host = host or app.config['WEB_HOST']
         self.port = port or app.config['WEB_PORT']
 
+        self.debug = debug
+
         # HACK: set app to self so self.app.run() works
         self.app = self
 
@@ -52,7 +55,11 @@ class SentryServer(DaemonRunner):
 
     def run(self):
         upgrade()
-        wsgi.server(eventlet.listen((self.host, self.port)), app)
+        app.wsgi_app = WSGIErrorMiddleware(app.wsgi_app)
+        if self.debug:
+            app.run(host=self.host, port=self.port, debug=self.debug)
+        else:
+            wsgi.server(eventlet.listen((self.host, self.port)), app)
 
 def cleanup(days=30, logger=None, site=None, server=None):
     from sentry.models import GroupedMessage, Message
@@ -100,6 +107,7 @@ def main():
     parser = OptionParser(version="%%prog %s" % VERSION)
     parser.add_option('--config', metavar='CONFIG')
     if args[1] == 'start':
+        parser.add_option('--debug', action='store_true', default=False, dest='debug')
         parser.add_option('--host', metavar='HOSTNAME')
         parser.add_option('--port', type=int, metavar='PORT')
         parser.add_option('--daemon', action='store_true', default=False, dest='daemonize')
@@ -135,7 +143,7 @@ def main():
     elif args[0] == 'start':
         app = SentryServer(host=options.host, port=options.port,
                            pidfile=options.pidfile, logfile=options.logfile,
-                           daemonize=options.daemonize)
+                           daemonize=options.daemonize, debug=options.debug)
         app.execute(args[0])
 
     elif args[0] == 'restart':

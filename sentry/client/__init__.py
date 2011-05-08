@@ -1,13 +1,5 @@
-from sentry import app
-
-_client = (None, None)
-
-def get_client():
-    global _client
-    if _client[0] != app.config['CLIENT']:
-        module, class_name = app.config['CLIENT'].rsplit('.', 1)
-        _client = (app.config['CLIENT'], getattr(__import__(module, {}, {}, class_name), class_name)())
-    return _client[1]
-
-client = get_client()
+def get_client(app):
+    setting = app.config['CLIENT']
+    module, class_name = setting.rsplit('.', 1)
+    return getattr(__import__(module, {}, {}, class_name), class_name)()
 

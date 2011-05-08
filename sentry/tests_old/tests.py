@@ -25,7 +25,7 @@ from django.template import TemplateSyntaxError
 from django.utils.encoding import smart_unicode
 
 from sentry import conf
-from sentry.helpers import transform
+from sentry.utils import transform
 from sentry.models import Event, Group
 from sentry.client import get_client
 from sentry.client.base import SentryClient
@@ -863,7 +863,7 @@ class SentryMailTest(TestCase):
 
 class SentryHelpersTest(TestCase):
     def test_get_db_engine(self):
-        from sentry.helpers import get_db_engine
+        from sentry.utils import get_db_engine
         _databases = getattr(settings, 'DATABASES', {}).copy()
         _engine = settings.DATABASE_ENGINE
 

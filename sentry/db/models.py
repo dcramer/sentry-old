@@ -7,7 +7,7 @@ try:
 except ImportError:
     import pickle
 
-from flask import current_app as app
+from sentry import app
 
 def map_field_values(model, values):
     result = {}

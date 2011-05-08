@@ -88,24 +88,31 @@ try:
 except Exception, e:
     VERSION = 'unknown'
 
-from flask import Flask
-from flaskext.babel import Babel
+# XXX: IT IS VERY IMPOTANT THAT NOTHING HAPPENS BEFORE APP IS DECLARED
 
-from sentry.db import get_backend
-from sentry.web.views import frontend
+from flask import Flask
 
 app = Flask(__name__)
+
+# OK CONTINUE WORKING
+
+from flaskext.babel import Babel
+
+from sentry.client import get_client
+from sentry.db import get_backend
 
 # Build configuration
 app.config.from_object('sentry.conf.SentryConfig')
 app.config.from_envvar('SENTRY_SETTINGS', silent=True)
 
-# Register views
-app.register_module(frontend)
-
 # Load configured datastore
 app.db = get_backend(app)
 
-app.jinja_env.globals['sentry_version'] = VERSION
+app.client = get_client(app)
 
-babel = Babel(app)
+app.babel = Babel(app)
+
+# Import views/templatetags to ensure registration
+import sentry.web.views
+import sentry.web.templatetags
+

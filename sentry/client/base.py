@@ -10,7 +10,7 @@ import urllib2
 from sentry import app
 
 import sentry
-from sentry.helpers import construct_checksum, force_unicode, get_signature, \
+from sentry.utils import construct_checksum, force_unicode, get_signature, \
                            get_auth_header
 
 class SentryClient(object):
