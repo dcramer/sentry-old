@@ -27,20 +27,59 @@ class ManagerDescriptor(object):
             raise AttributeError("Manager isn't accessible via %s instances" % type.__name__)
         return self.manager
 
+class QuerySet(object):
+    def __init__(self, model, sort_by=None):
+        self.model = model
+        self.index = sort_by or self.model._meta.ordering
+    
+    def __getitem__(self, key):
+        is_slice = isinstance(key, slice)
+        if is_slice:
+            assert key.step == 1 or key.step is None
+            start = key.start
+            stop = key.stop
+        else:
+            start = key
+            stop = key + 1
+
+        if stop == -1:
+            num = stop
+        else:
+            num = start - stop
+        
+        if self.index.startswith('-'):
+            desc = True
+            index = self.index[1:]
+        else:
+            desc = False
+            index = self.index
+
+        results = [self.model(pk, **data) for pk, data in app.db.list(self.model, index, start, num, desc)]
+        
+        if is_slice:
+            return results
+        return results[0]
+
+    def __iter__(self):
+        for r in self[0:-1]:
+            yield r
+
+    def order_by(self, index):
+        self.index = index
+        return self
+    
 class Manager(object):
     def __init__(self, model):
         self.model = model
 
-    def all(self, offset=0, limit=100):
-        return self.sort_by(self.model._meta.ordering, offset, limit)
+    def get_query_set(self):
+        return QuerySet(self.model)
 
-    def sort_by(self, index, offset=0, limit=100):
-        if index.startswith('-'):
-            desc = True
-            index = index[1:]
-        else:
-            desc = False
-        return [self.model(pk, **data) for pk, data in app.db.list(self.model, index, offset, limit, desc)]
+    def all(self):
+        return self.get_query_set()
+
+    def order_by(self, index):
+        return self.get_query_set().order_by(index)
 
     def get(self, pk):
         data = app.db.get(self.model, pk)
@@ -67,6 +106,22 @@ class Manager(object):
 
         return instance
 
+    def delete(self, pk):
+        # remove indexes
+        for index in self.model._meta.indexes:
+            self.remove_from_index(pk, index)
+
+        ordering = self.model._meta.ordering
+        if ordering == 'default':
+            self.remove_from_index(pk, 'default')
+
+        # remove relation keys
+        for name, field in self.model._meta.relations:
+            app.db.remove_relation(self.model, pk)
+
+        # remove instance
+        app.db.delete(self.model, pk)
+
     def update(self, pk, **values):
         result = app.db.set(self.model, pk, **map_field_values(self.model, values))
 
@@ -84,6 +139,9 @@ class Manager(object):
 
     def get_meta(self, pk):
         return app.db.get_meta(self.model, pk)
+
+    def remove_from_index(self, pk, index):
+        return app.db.remove_from_index(self.model, pk, index)
 
     def add_to_index(self, pk, index, score):
         return app.db.add_to_index(self.model, pk, index, score)
@@ -107,11 +165,15 @@ class Manager(object):
 class Options(object):
     def __init__(self, meta, attrs):
         # Grab fields
+        fkeys = []
         fields = []
         for obj_name, obj in attrs.iteritems():
-            if isinstance(obj, Field):
+            if isinstance(obj, ForeignKey):
+                fkeys.append((obj_name, obj))
+            elif isinstance(obj, Field):
                 fields.append((obj_name, obj))
-
+        
+        self.relations = fkeys
         self.fields = dict(fields)
 
         default_order = meta.__dict__.get('ordering')
@@ -187,6 +249,9 @@ class Model(object):
         for k, v in values.iteritems():
             setattr(self, k, v)
 
+    def delete(self):
+        self.objects.delete(self.pk)
+
     def set_meta(self, **values):
         self.objects.set_meta(self.pk, **values)
 
@@ -194,7 +259,10 @@ class Model(object):
         return self.objects.get_meta(self.pk)
 
     def add_relation(self, instance, score):
-        return app.db.add_relation(self.__class__, self.pk, instance.__class__, instance.pk, score)
+        # add child relation
+        app.db.add_relation(self.__class__, self.pk, instance.__class__, instance.pk, score)
+        # add parent relation
+        app.db.add_relation(instance.__class__, instance.pk, self.__class__, self.pk, score)
 
     def get_relations(self, model, offset=0, limit=100):
         return [model(pk, **data) for pk, data in app.db.list_relations(self.__class__, self.pk, model, offset, limit)]
@@ -224,6 +292,10 @@ class Field(object):
 
     def to_python(self, value=None):
         return value
+
+class ForeignKey(object):
+    def __init__(self, to_model):
+        self.to_model = to_model
 
 class String(Field):
     def to_python(self, value=None):

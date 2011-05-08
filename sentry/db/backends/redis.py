@@ -17,6 +17,10 @@ class RedisBackend(SentryBackend):
         self.set(schema, pk, **values)
         return pk
 
+    def delete(self, schema, pk):
+        self.conn.delete('data:%s:%s' % (self._get_schema_name(schema), pk))
+        self.conn.delete('metadata:%s:%s' % (self._get_schema_name(schema), pk))
+
     def set(self, schema, pk, **values):
         self.conn.hmset('data:%s:%s' % (self._get_schema_name(schema), pk), values)
 
@@ -47,6 +51,12 @@ class RedisBackend(SentryBackend):
             score = score.strftime('%s.%m')
         self.conn.zadd('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)), to_pk, float(score))
 
+    def remove_relation(self, from_schema, from_pk, to_schema, to_pk=None):
+        if to_pk:
+            self.conn.zrem('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)), to_pk)
+        else:
+            self.conn.delete('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)))
+
     def list_relations(self, from_schema, from_pk, to_schema, offset=0, limit=100, desc=False):
         # lists relations in a sorted index for base instance
         # XXX: this is O(n)+1, ugh
@@ -63,6 +73,9 @@ class RedisBackend(SentryBackend):
         if isinstance(score, datetime.datetime):
             score = score.strftime('%s.%m')
         self.conn.zadd('index:%s:%s' % (self._get_schema_name(schema), index), pk, float(score))
+
+    def remove_from_index(self, schema, pk, index):
+        self.conn.zrem('index:%s:%s' % (self._get_schema_name(schema), index), pk)
 
     ## Generic indexes
 

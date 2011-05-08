@@ -85,7 +85,7 @@ def sentry_version():
     return {'sentry_version': sentry.VERSION}
 
 @app.template_filter()
-def get_actions(group, request):
+def get_actions(group):
     action_list = []
     for cls in GroupActionProvider.plugins.itervalues():
         inst = cls(group.pk)
@@ -94,7 +94,7 @@ def get_actions(group, request):
         yield action[0], action[1], request.path == action[1]
 
 @app.template_filter()
-def get_panels(group, request):
+def get_panels(group):
     panel_list = []
     for cls in GroupActionProvider.plugins.itervalues():
         inst = cls(group.pk)
@@ -103,21 +103,12 @@ def get_panels(group, request):
         yield panel[0], panel[1], request.path == panel[1]
 
 @app.template_filter()
-def get_widgets(group, request):
+def get_widgets(group):
     for cls in GroupActionProvider.plugins.itervalues():
         inst = cls(group.pk)
         resp = inst.widget(request, group)
         if resp:
             yield resp
-
-@app.template_filter()
-def get_tags(group, request):
-    tag_list = []
-    for cls in GroupActionProvider.plugins.itervalues():
-        inst = cls(group.pk)
-        tag_list = inst.tags(request, tag_list, group)
-    for tag in tag_list:
-        yield tag
 
 @app.template_filter()
 def timesince(d, now=None):

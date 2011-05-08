@@ -1,8 +1,10 @@
 import datetime
 import hashlib
+import re
 import sys
-import traceback
 import uuid
+
+from flask import render_template
 
 from sentry import app
 from sentry.utils import get_versions, transform, shorten, varmap
@@ -188,7 +190,7 @@ class ExceptionEvent(BaseEvent):
 
     - exc_value: 'My exception value'
     - exc_type: 'module.ClassName'
-    - exc_frames: [(module path, line number, line text, truncated locals)]
+    - exc_frames: a list of serialized frames (see get_traceback_frames)
     - exc_template: 'template/name.html'
     """
     def get_event_hash(self, exc_value=None, exc_type=None, exc_frames=None, **kwargs):
@@ -268,12 +270,89 @@ class ExceptionEvent(BaseEvent):
             result['exc_template'] = (origin.reload(), start, end, origin.name)
             result['tags'].append(('template', origin.loadname))
 
-        tb_message = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-
         result['exc_value'] = transform(exc_value)
         result['exc_type'] = exc_type
+        result['exc_frames'] = self.get_traceback_frames(exc_traceback)
 
         return result
+
+    def _get_lines_from_file(self, filename, lineno, context_lines, loader=None, module_name=None):
+        """
+        Returns context_lines before and after lineno from file.
+        Returns (pre_context_lineno, pre_context, context_line, post_context).
+        """
+        source = None
+        if loader is not None and hasattr(loader, "get_source"):
+            source = loader.get_source(module_name)
+            if source is not None:
+                source = source.splitlines()
+        if source is None:
+            try:
+                f = open(filename)
+                try:
+                    source = f.readlines()
+                finally:
+                    f.close()
+            except (OSError, IOError):
+                pass
+        if source is None:
+            return None, [], None, []
+
+        encoding = 'ascii'
+        for line in source[:2]:
+            # File coding may be specified. Match pattern from PEP-263
+            # (http://www.python.org/dev/peps/pep-0263/)
+            match = re.search(r'coding[:=]\s*([-\w.]+)', line)
+            if match:
+                encoding = match.group(1)
+                break
+        source = [unicode(sline, encoding, 'replace') for sline in source]
+
+        lower_bound = max(0, lineno - context_lines)
+        upper_bound = lineno + context_lines
+
+        pre_context = [line.strip('\n') for line in source[lower_bound:lineno]]
+        context_line = source[lineno].strip('\n')
+        post_context = [line.strip('\n') for line in source[lineno+1:upper_bound]]
+
+        return lower_bound, pre_context, context_line, post_context
+
+    def get_traceback_frames(self, tb):
+        frames = []
+        while tb is not None:
+            # support for __traceback_hide__ which is used by a few libraries
+            # to hide internal frames.
+            if tb.tb_frame.f_locals.get('__traceback_hide__'):
+                tb = tb.tb_next
+                continue
+            filename = tb.tb_frame.f_code.co_filename
+            function = tb.tb_frame.f_code.co_name
+            lineno = tb.tb_lineno - 1
+            loader = tb.tb_frame.f_globals.get('__loader__')
+            module_name = tb.tb_frame.f_globals.get('__name__')
+            pre_context_lineno, pre_context, context_line, post_context = self._get_lines_from_file(filename, lineno, 7, loader, module_name)
+            if pre_context_lineno is not None:
+                frames.append({
+                    'id': id(tb),
+                    'filename': filename,
+                    'module': module_name,
+                    'function': function,
+                    'lineno': lineno + 1,
+                    'vars': tb.tb_frame.f_locals.items(),
+                    'pre_context': pre_context,
+                    'context_line': context_line,
+                    'post_context': post_context,
+                    'pre_context_lineno': pre_context_lineno + 1,
+                })
+            tb = tb.tb_next
+        return frames
+
+    def to_html(self, event):
+        return render_template('sentry/partial/events/exception.html', **{
+            'exception_value': event.data['exc_value'],
+            'exception_type': event.data['exc_type'],
+            'frames': event.data['exc_frames'],
+        })
 
 class SQLEvent(BaseEvent):
     """

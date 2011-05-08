@@ -141,6 +141,11 @@ class Event(models.Model):
         module = self.data['__sentry__'].get('module', 'ver')
         return module, self.data['__sentry__']['version']
 
+    def get_processor(self):
+        mod_name, class_name = self.type.rsplit('.', 1)
+        processor = getattr(__import__(mod_name, {}, {}, [class_name]), class_name)()
+        return processor
+
 class RequestEvent(object):
     def __init__(self, data):
         self.data = data

@@ -12,11 +12,13 @@ import time
 import warnings
 import zlib
 
+from jinja2 import Markup
 from flask import render_template, redirect, request, url_for, \
                   abort, Response
 
 from sentry import app
 from sentry.utils import get_filters, is_float, get_signature, parse_auth_header
+from sentry.utils.shortcuts import get_object_or_404
 from sentry.models import Group, Event
 from sentry.plugins import GroupActionProvider
 # from sentry.templatetags.sentry_helpers import with_priority
@@ -234,24 +236,11 @@ def ajax_handler():
     return Response(simplejson.dumps(data), mimetype='application/json')
 
 @login_required
-@app.route('/event/<group_id>')
+@app.route('/group/<group_id>')
 def group_details(group_id):
-    group = get_object_or_404(GroupedMessage, pk=group_id)
-
-    obj = group.message_set.all().order_by('-id')[0]
-    if '__sentry__' in obj.data:
-        module, args, frames = obj.data['__sentry__']['exc']
-        obj.class_name = str(obj.class_name)
-        # We fake the exception class due to many issues with imports/builtins/etc
-        exc_type = type(obj.class_name, (Exception,), {})
-        exc_value = exc_type(obj.message)
-
-        exc_value.args = args
-
-        reporter = ImprovedExceptionReporter(obj.request, exc_type, exc_value, frames, obj.data['__sentry__'].get('template'))
-        traceback = mark_safe(reporter.get_traceback_html())
-    elif group.traceback:
-        traceback = mark_safe('<pre>%s</pre>' % (group.traceback,))
+    group = get_object_or_404(Group, pk=group_id)
+    
+    last_event = group.get_relations(Event, limit=1)[0]
 
     def iter_data(obj):
         for k, v in obj.data.iteritems():
@@ -259,31 +248,34 @@ def group_details(group_id):
                 continue
             yield k, v
 
-    return render_template('sentry/group/details.html', {
+    # Render our event's custom output
+    event_html = Markup(last_event.get_processor().to_html(last_event))
+    
+    return render_template('sentry/group/details.html', **{
         'page': 'details',
         'group': group,
-        'json_data': iter_data(obj),
-        'traceback': traceback,
-    }, request)
+        'json_data': iter_data(last_event),
+        'event_html': event_html,
+    })
 
 @login_required
-@app.route('/event/<event_id>/messages/')
-def group_message_list(self, request, group_id):
+@app.route('/group/<group_id>/messages/')
+def group_message_list(group_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
     message_list = group.message_set.all().order_by('-datetime')
 
     page = 'messages'
 
-    return render_template('sentry/group/message_list.html', {
+    return render_template('sentry/group/message_list.html', **{
         'page': 'messages',
         'group': group,
         'message_list': message_list,
-    }, request)
+    })
 
 @login_required
-@app.route('/event/<event_id>/messages/<message_id>/')
-def group_message_details():
+@app.route('/group/<group_id>/events/<event_id>/')
+def group_message_details(group_id, event_id):
     group = get_object_or_404(GroupedMessage, pk=group_id)
 
     message = get_object_or_404(group.message_set, pk=message_id)
@@ -308,13 +300,13 @@ def group_message_details():
                 continue
             yield k, v
 
-    return render_template('sentry/group/message.html', {
+    return render_template('sentry/group/message.html', **{
         'page': 'messages',
         'json_data': iter_data(message),
         'group': group,
         'message': message,
         'traceback': traceback,
-    }, request)
+    })
 
 @app.route('/store/', methods=['POST'])
 def store():

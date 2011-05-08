@@ -1,6 +1,6 @@
 {% extends "sentry/group/details.html" %}
 
-{% block title %}{{ group.error }} | {{ block.super }}{% endblock %}
+{% block title %}{{ group.error }} | {{ super() }}{% endblock %}
 
 {% block inner %}
     <ul class="messages" id="message_list">

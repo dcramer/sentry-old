@@ -1,6 +1,6 @@
 {% extends "sentry/layout.html" %}
 
-{% block title %}{{ group.error }} | {{ block.super }}{% endblock %}
+{% block title %}{{ group.error }} | {{ super() }}{% endblock %}
 
 {% block heading %}
     {{ gettext('Message Details') }}
@@ -9,16 +9,16 @@
 {% block sidebar %}
     <ul class="actions">
         {# We're going to move these to the resolve action location #}
-        {% for label, link, is_active in group|get_actions:request %}
+        {% for label, link, is_active in group|get_actions() %}
             <li><a href="{{ link }}">{{ label }}</a></li>
         {% endfor %}
     </ul>
     <h2>Meta</h2>
     <dl class="flat">
         <dt>Logger:</dt>
-        <dd><a href="{% url sentry:index %}?logger={{ group.logger }}">{{ group.logger }}</a></dd>
+        <dd><a href="{{ url_for('index') }}?logger={{ group.logger }}">{{ group.logger }}</a></dd>
         <dt>Level:</dt>
-        <dd><a href="{% url sentry:index %}?level={{ group.level }}">{{ group.get_level_display }}</a></dd>
+        <dd><a href="{{ url_for('index') }}?level={{ group.level }}">{{ group.get_level_display }}</a></dd>
         <dt>Status:</dt>
         <dd>{{ group.get_status_display|title }}</dd>
         <dt>First Seen:</dt>
@@ -27,39 +27,34 @@
         <dd>{{ group.last_seen|timesince }}</dd>
     </dl>
         
-    {% for html in group|get_widgets:request %}
+    {% for html in group|get_widgets() %}
         {{ html|safe }}
     {% endfor %}
 {% endblock %}
 
 {% block main %}
     <ul class="messages" id="message_list">
-        <li class="{{ loop.cycle('row1', 'row2') }} level-{{ group.level }} active" id="group_{{ group.pk }}" data-sentry-count="{{ group.times_seen }}">
-            <span class="count count-digits-{{ group.times_seen|num_digits }}">{{ group.times_seen }}</span>
-            <h3>{% if group.view %}{{ group.view }}{% else %}{{ group.message_top|truncatechars:100 }}{% endif %}</h3>
+        <li class="level-{{ group.level }}{% if priority %} priority-{{ priority }}{% endif %}" id="group_{{ group.pk }}" data-sentry-count="{{ group.times_seen }}">
+            <span class="count count-digits-{{ group.times_seen|num_digits }}">{{ group.count }}</span>
+            <h3>{{ group.message }}</h3>
             <span class="last_seen">{{ group.last_seen|timesince }}</span>
             <span class="status status-{{ group.status }}">{{ group.get_status_display }}</span>
             <p class="message">
-                <span class="tag tag-level">{{ group.get_level_display }}</span> 
-                <span class="tag tag-logger">{{ group.logger }}</span> 
-                {% with group.get_version as version %}
-                    {% if version %}
-                        <span class="tag tag-version">{{ version.0 }} {{ version.1 }}</span> 
-                    {% endif %}
-                {% endwith %}
-                {% for tag in group|get_tags:request %}<span class="tag">{{ tag }}</span> {% endfor %}
-                {{ group.error }}
+                {% for k, v in group.tags %}
+                    <span class="tag tag-{{ k }}">{{ v }}</span>
+                {% endfor %}
             </p>
+            <a href="{{ url_for('group_details', group_id=group.pk) }}" class="row_link"></a>
             {% if group.status == 0 %}
-                <a href="{% url sentry-ajax %}?op=resolve&amp;gid={{ group.pk }}" class="hidden button button_resolve">&#10003;</a>
+                <a href="{{ url_for('ajax_handler') }}?op=resolve&amp;gid={{ group.pk }}" onclick="Sentry.stream.resolve({{ group.pk }});return false;" class="button resolve_button hidden">&#10003;</a>
             {% endif %}
         </li>
     </ul>
 
     <ul class="nav" id="group_nav">
-        <li{% ifequal page 'details' %} class="active"{% endifequal %}><a href="{% url sentry-group group.pk %}">Details</a></li>
-        <li{% ifequal page 'messages' %} class="active"{% endifequal %}><a href="{% url sentry-group-messages group.pk %}">Messages</a></li>
-        {% for label, link, is_active in group|get_panels:request %}
+        <li{% if page == 'details' %} class="active"{% endif %}><a href="{{ url_for('group_details', group_id=group.pk) }}">Details</a></li>
+        <li{% if page == 'messages' %} class="active"{% endif %}><a href="{{ url_for('group_message_list', group_id=group.pk) }}">Messages</a></li>
+        {% for label, link, is_active in group|get_panels() %}
             <li{% if is_active %} class="active"{% endif %}><a href="{{ link }}">{{ label }}</a></li>
         {% endfor %}
     </ul>
@@ -71,11 +66,22 @@
                 <pre id="full-message">{{ group.message }}</pre>
             {% endif %}
             
-            {% if traceback %}
-                {{ traceback }}
-            {% endif %}
+            <table class="meta">
+              <tr>
+                <th>Request Method:</th>
+                <td>TODO</td>
+              </tr>
+              {% if request.path_info %}
+              <tr>
+                <th>Request URL:</th>
+                <td><a href="{{ request.build_absolute_uri|escape }}">{{ request.build_absolute_uri|escape }}</a></td>
+              </tr>
+              {% endif %}
+            </table>
             
-            {% with group|chart_data as chart_data %}
+            {{ event_html }}
+            
+            {% with chart_data=group|chart_data() %}
                 {% if chart_data %}
                 <script type="text/javascript">
                 $(document).ready(function() {
@@ -191,7 +197,7 @@
                                     {{ v|pprint }}
                                 {% endif %}
                             {% else %}
-                                <p>{% blocktrans with k as varname %}No data for {{ varname }}{% endblocktrans %}</p>
+                                <p>{{ gettext('No data for %(varname)s', varname=k) }}</p>
                             {% endif %}
                             </td>
                         </tr>

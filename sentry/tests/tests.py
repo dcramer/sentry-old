@@ -118,7 +118,7 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(tag[0], 'server')
         self.assertEquals(tag[1], 'foo.bar')
 
-        tags = Tag.objects.sort_by('-count')
+        tags = Tag.objects.order_by('-count')
 
         self.assertEquals(len(tags), 2)
 

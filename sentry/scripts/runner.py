@@ -61,28 +61,16 @@ class SentryServer(DaemonRunner):
         else:
             wsgi.server(eventlet.listen((self.host, self.port)), app)
 
-def cleanup(days=30, logger=None, site=None, server=None):
-    from sentry.models import GroupedMessage, Message
+def cleanup(days=30, tags=None):
+    from sentry.models import Group, Event
     import datetime
     
     ts = datetime.datetime.now() - datetime.timedelta(days=days)
     
-    qs = Message.objects.filter(datetime__lte=ts)
-    if logger:
-        qs.filter(logger=logger)
-    if site:
-        qs.filter(site=site)
-    if server:
-        qs.filter(server_name=server)
-    qs.delete()
-    
-    # TODO: we should collect which messages above were deleted
-    # and potentially just send out post_delete signals where
-    # GroupedMessage can update itself accordingly
-    qs = GroupedMessage.objects.filter(last_seen__lte=ts)
-    if logger:
-        qs.filter(logger=logger)
-    qs.delete()
+    for event in Event.objects.order_by('date'):
+        if event.date > ts:
+            break
+        event.delete()
 
 def upgrade():
     pass
@@ -118,14 +106,10 @@ def main():
         parser.add_option('--pidfile', dest='pidfile')
         parser.add_option('--logfile', dest='logfile')
     elif args[1] == 'cleanup':
-        parser.add_option('--days', default='30',
+        parser.add_option('--days', default='30', type=int,
                           help='Numbers of days to truncate on.')
-        parser.add_option('--logger',
-                          help='Limit truncation to only entries from logger.')
-        parser.add_option('--site',
-                          help='Limit truncation to only entries from site.')
-        parser.add_option('--server',
-                          help='Limit truncation to only entries from server.')
+        parser.add_option('--tags',
+                          help='Limit truncation to only entries tagged with key:value.')
 
     (options, args) = parser.parse_args()
 
@@ -155,7 +139,7 @@ def main():
         app.execute(args[0])
 
     elif args[0] == 'cleanup':
-        cleanup(days=options.days, logger=options.logger, site=options.site, server=options.server)
+        cleanup(days=options.days, tags=options.tags)
 
     sys.exit(0)
 
