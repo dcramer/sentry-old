@@ -129,26 +129,6 @@ class Manager(object):
 
         return instance
 
-    def delete(self, pk):
-        # remove indexes
-        for index in self.model._meta.sortables:
-            index_values = dict((name, getattr(self, name)) for name in index)
-            app.db.remove_cindex(model, self.pk, **to_db(model, index_values))
-
-        for index in self.model._meta.indexes:
-            self.remove_from_cindex(pk, index)
-
-        ordering = self.model._meta.ordering
-        if ordering == 'default':
-            self.remove_from_index(pk, 'default')
-
-        # remove relation keys
-        for name, field in self.model._meta.relations:
-            app.db.remove_relation(self.model, pk)
-
-        # remove instance
-        app.db.delete(self.model, pk)
-
     def set_meta(self, pk, **values):
         if not values:
             return
@@ -303,7 +283,26 @@ class Model(object):
         return result
 
     def delete(self):
-        self.objects.delete(self.pk)
+        model = self.__class__
+        
+        # remove indexes
+        for index in self._meta.sortables:
+            self.objects.remove_from_index(self.pk, index)
+
+        for index in self._meta.indexes:
+            index_values = dict((name, getattr(self, name)) for name in index)
+            app.db.remove_from_cindex(model, self.pk, **to_db(model, index_values))
+
+        ordering = self._meta.ordering
+        if ordering == 'default':
+            self.objects.remove_from_index(self.pk, 'default')
+
+        # remove relation keys
+        for name, field in self._meta.relations:
+            app.db.remove_relation(model, self.pk)
+
+        # remove instance
+        app.db.delete(model, self.pk)
 
     def set_meta(self, **values):
         self.objects.set_meta(self.pk, **values)
