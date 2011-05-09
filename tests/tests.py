@@ -2,11 +2,11 @@ import unittest2
 import datetime
 
 from sentry import app
-from sentry.db import get_backend
+from sentry.db import get_backend, models
 from sentry.events import store
 from sentry.models import Event, Tag, Group
 
-class SentryTest(unittest2.TestCase):
+class BaseTest(unittest2.TestCase):
     def setUp(self):
         # XXX: might be a better way to do do this
         app.config['DATASTORE'] = {
@@ -20,6 +20,53 @@ class SentryTest(unittest2.TestCase):
         # Flush the Redis instance
         app.db.conn.flushdb()
 
+class TestModel(models.Model):
+    str_ = models.String()
+    int_ = models.Integer()
+    float_ = models.Float()
+    list_ = models.List()
+    
+    class Meta:
+        sortables = ('int_', 'float_')
+        indexes = (('str_',),)
+    
+class ORMTest(BaseTest):
+    def test_create(self):
+        inst = TestModel.objects.create(
+            str_='foo',
+            int_=0,
+            float_=0.1,
+            list_=[1, 2, 3],
+        )
+        self.assertEquals(TestModel.objects.count(), 1)
+        self.assertTrue(inst.pk)
+        self.assertEquals(inst.str_, 'foo')
+        self.assertEquals(inst.int_, 0)
+        self.assertEquals(inst.float_, 0.1)
+        self.assertTrue(len(inst.list_), 3)
+        self.assertTrue(1 in inst.list_)
+        self.assertTrue(2 in inst.list_)
+        self.assertTrue(3 in inst.list_)
+
+    def test_get_or_create(self):
+        inst, created = TestModel.objects.get_or_create(str_='foo', defaults={
+            'int_': 0,
+            'float_': 0.1,
+            'list_': [1, 2, 3],
+        })
+        self.assertTrue(created)
+        self.assertEquals(TestModel.objects.count(), 1)
+        self.assertTrue(inst.pk)
+        self.assertEquals(inst.str_, 'foo')
+        self.assertEquals(inst.int_, 0)
+        self.assertEquals(inst.float_, 0.1)
+        self.assertTrue(len(inst.list_), 3)
+        self.assertTrue(1 in inst.list_)
+        self.assertTrue(2 in inst.list_)
+        self.assertTrue(3 in inst.list_)
+
+
+class SentryTest(BaseTest):
     # Some quick ugly high level tests to get shit working fast
     def test_create(self):
         # redis is so blazing fast that we have to artificially inflate dates
@@ -133,7 +180,7 @@ class SentryTest(unittest2.TestCase):
 
         tags = Tag.objects.order_by('-count')
 
-        self.assertEquals(len(tags), 2)
+        self.assertEquals(len(tags), 2, tags)
 
         tag = tags[0]
 

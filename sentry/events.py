@@ -33,16 +33,17 @@ class BaseEvent(object):
         # Grab our tags for this event
         for k, v in tags:
             # XXX: this should be cached
+            tag_hash = hashlib.md5('%s=%s' % (k, v)).hexdigest()
             tag, created = Tag.objects.get_or_create(
-                key=k,
-                value=v,
+                hash=tag_hash,
                 defaults={
+                    'key': k,
+                    'value': v,
                     'count': 1,
                 })
             # Maintain counts
             if not created:
                 tag.incr('count')
-            Tag.objects.add_to_index(tag.pk, 'count', int(tag.count))
 
         # XXX: We need some special handling for "data" as it shouldnt be part of the main hash??
 

@@ -97,10 +97,16 @@ class RedisBackend(SentryBackend):
 
     ## Generic indexes
 
+    # TODO: can we combine constraint indexes with sort indexes? (at least the API)
+
     def add_to_cindex(self, schema, pk, **keys):
         # adds an index to a composite index (for checking uniqueness)
-        self.conn.set('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)), pk)
+        self.conn.sadd('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)), pk)
 
-    def get_by_cindex(self, schema, **keys):
-        # returns the primary key of an object from a composite index
-        return self.conn.get('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)))
+    def remove_from_cindex(self, schema, pk, **keys):
+        # adds an index to a composite index (for checking uniqueness)
+        self.conn.srem('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)), pk)
+
+    def list_by_cindex(self, schema, **keys):
+        # returns a list of keys associated with a constraint
+        return list(self.conn.smembers('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys))))

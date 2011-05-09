@@ -41,6 +41,9 @@ class QuerySet(object):
         self.model = model
         self.index = order_by or self.model._meta.ordering
     
+    def __repr__(self):
+        return u'<%s: %s>' % (self.__class__.__name__, list(self))
+
     def __getitem__(self, key):
         is_slice = isinstance(key, slice)
         if is_slice:
@@ -89,6 +92,9 @@ class Manager(object):
     def __init__(self, model):
         self.model = model
 
+    def count(self):
+        return app.db.count(self.model, self.model._meta.ordering)
+
     def get_query_set(self):
         return QuerySet(self.model)
 
@@ -114,10 +120,8 @@ class Manager(object):
         instance = self.model(pk, **values)
         instance.save()
 
-        for index in self.model._meta.indexes:
-            value = getattr(instance, index, 0.0)
-            self.add_to_index(pk, index, value)
-
+        # Ensure we save our default index (this only happens
+        # on instance creation)
         ordering = self.model._meta.ordering
         if ordering == 'default':
             value = datetime.datetime.now()
@@ -127,8 +131,12 @@ class Manager(object):
 
     def delete(self, pk):
         # remove indexes
+        for index in self.model._meta.sortables:
+            index_values = dict((name, getattr(self, name)) for name in index)
+            app.db.remove_cindex(model, self.pk, **to_db(model, index_values))
+
         for index in self.model._meta.indexes:
-            self.remove_from_index(pk, index)
+            self.remove_from_cindex(pk, index)
 
         ordering = self.model._meta.ordering
         if ordering == 'default':
@@ -140,15 +148,6 @@ class Manager(object):
 
         # remove instance
         app.db.delete(self.model, pk)
-
-    def update(self, pk, **values):
-        result = app.db.set(self.model, pk, **to_db(self.model, values))
-
-        for index in self.model._meta.indexes:
-            if index in values:
-                self.add_to_index(pk, index, values[index])
-
-        return result
 
     def set_meta(self, pk, **values):
         if not values:
@@ -167,16 +166,16 @@ class Manager(object):
     def get_or_create(self, defaults={}, **index):
         # return (instance, created)
 
-        pk = app.db.get_by_cindex(self.model, **to_db(self.model, index))
-        if pk:
-            return self.get(pk), False
+        pk_set = app.db.list_by_cindex(self.model, **to_db(self.model, index))
+        if len(pk_set) == 1:
+            return self.get(pk_set[0]), False
+        elif pk_set:
+            raise self.model.MultipleObjectsReturned
 
         defaults = defaults.copy()
         defaults.update(index)
 
         inst = self.create(**defaults)
-
-        app.db.add_to_cindex(self.model, inst.pk, **to_db(self.model, index))
 
         return inst, True
 
@@ -195,10 +194,16 @@ class Options(object):
         self.fields = dict(fields)
 
         default_order = meta.__dict__.get('ordering')
+
         self.ordering = default_order or 'default'
+
+        self.sortables = list(meta.__dict__.get('sortables', []))
         self.indexes = list(meta.__dict__.get('indexes', []))
-        if default_order and default_order not in self.indexes:
-            self.indexes.append(default_order)
+
+        # If we've specified ordering, and ordering is not already defined
+        # as a sort index, we must register it
+        if default_order and default_order not in self.sortables:
+            self.sortables.append(default_order)
 
 class ModelDescriptor(type):
     def __new__(cls, name, bases, attrs):
@@ -265,7 +270,7 @@ class Model(object):
 
     def incr(self, key, amount=1):
         result = app.db.incr(self.__class__, self.pk, key, amount)
-        if key in self._meta.indexes:
+        if key in self._meta.sortables:
             self.objects.add_to_index(self.pk, key, result)
         setattr(self, key, result)
         return result
@@ -273,12 +278,26 @@ class Model(object):
     def save(self):
         self.before_save()
         values = dict((name, getattr(self, name)) for name in self._meta.fields.iterkeys())
-        self.objects.update(self.pk, **values)
+        self.update(**values)
 
     def update(self, **values):
-        self.objects.update(self.pk, **values)
+        model = self.__class__
+
+        result = app.db.set(model, self.pk, **to_db(model, values))
+
+        for index in self._meta.sortables:
+            if index in values:
+                self.objects.add_to_index(self.pk, index, getattr(self, index))
+
+        # TODO: we need to deal w/ unsetting the previous keys
+        for index in self._meta.indexes:
+            index_values = dict((name, getattr(self, name)) for name in index)
+            app.db.add_to_cindex(model, self.pk, **to_db(model, index_values))
+
         for k, v in values.iteritems():
             setattr(self, k, v)
+
+        return result
 
     def delete(self):
         self.objects.delete(self.pk)

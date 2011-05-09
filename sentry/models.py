@@ -23,6 +23,7 @@ class Tag(models.Model):
 
     class Meta:
         ordering = 'count'
+        indexes = (('hash',),)
 
     def __unicode__(self):
         return u"%s=%s; count=%s" % (self.key, self.value, self.count)
@@ -39,6 +40,7 @@ class TagCount(models.Model):
 
     class Meta:
         ordering = 'count'
+        indexes = (('hash',),)
 
     @classmethod
     def get_tags_hash(cls, tags):
@@ -68,7 +70,8 @@ class Group(models.Model):
 
     class Meta:
         ordering = 'last_seen'
-        indexes = ('time_spent', 'first_seen', 'last_seen', 'score')
+        sortables = ('time_spent', 'first_seen', 'last_seen', 'score')
+        indexes = (('type', 'hash'),)
 
     def before_save(self, *args, **kwargs):
         self.score = self.get_score()
