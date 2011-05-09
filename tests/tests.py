@@ -81,6 +81,12 @@ class ORMTest(BaseTest):
         self.assertTrue(2 in inst.list_)
         self.assertTrue(3 in inst.list_)
 
+    def test_get(self):
+        self.assertRaises(TestModel.DoesNotExist, TestModel.objects.get, 'foo')
+
+        inst = TestModel.objects.create(str_='foo')
+
+        self.assertEquals(TestModel.objects.get(inst.pk), inst)
 
 class SentryTest(BaseTest):
     # Some quick ugly high level tests to get shit working fast

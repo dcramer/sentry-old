@@ -252,10 +252,13 @@ class Model(object):
         if kwargs:
             raise ValueError('%s are not part of the schema for %s' % (', '.join(kwargs.keys()), self.__class__.__name__))
 
+    def __eq__(self, other):
+        return type(other) == type(self) and other.pk == self.pk
+
     def __setattr__(self, key, value):
         # XXX: is this the best approach for validating attributes
         field = self._meta.fields.get(key)
-        if field:
+        if field and value:
             value = field.to_python(value)
         object.__setattr__(self, key, value)
 
@@ -287,7 +290,7 @@ class Model(object):
 
         for index in self._meta.sortables:
             if index in values:
-                self.objects.add_to_index(self.pk, index, getattr(self, index))
+                self.objects.add_to_index(self.pk, index, getattr(self, index) or 0.0)
 
         # TODO: we need to deal w/ unsetting the previous keys
         for index in self._meta.indexes:
@@ -383,6 +386,9 @@ class DateTime(Field):
         return value
 
 class List(Field):
+    def get_default(self):
+        return []
+    
     def to_db(self, value=None):
         if isinstance(value, (tuple, list)):
             value = pickle.dumps(value)
