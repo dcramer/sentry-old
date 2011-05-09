@@ -65,6 +65,22 @@ class ORMTest(BaseTest):
         self.assertTrue(2 in inst.list_)
         self.assertTrue(3 in inst.list_)
 
+        inst, created = TestModel.objects.get_or_create(str_='foo', defaults={
+            'int_': 1,
+            'float_': 1.1,
+            'list_': [1],
+        })
+        self.assertFalse(created)
+        self.assertEquals(TestModel.objects.count(), 1)
+        self.assertTrue(inst.pk)
+        self.assertEquals(inst.str_, 'foo')
+        self.assertEquals(inst.int_, 0)
+        self.assertEquals(inst.float_, 0.1)
+        self.assertTrue(len(inst.list_), 3)
+        self.assertTrue(1 in inst.list_)
+        self.assertTrue(2 in inst.list_)
+        self.assertTrue(3 in inst.list_)
+
 
 class SentryTest(BaseTest):
     # Some quick ugly high level tests to get shit working fast
