@@ -10,8 +10,7 @@ import urllib2
 from sentry import app
 
 import sentry
-from sentry.utils import construct_checksum, force_unicode, get_signature, \
-                           get_auth_header
+from sentry.utils import get_signature, get_auth_header
 
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
@@ -61,38 +60,6 @@ class SentryClient(object):
                     self.logger.log(kwargs.pop('level', None) or logging.ERROR, kwargs.pop('message', None))
         else:
             return self.store(**kwargs)
-
-    def create_from_record(self, record, **kwargs):
-        # TODO: this should be moved into a generic LogHandlerProcessor
-        """
-        Creates an error log for a ``logging`` module ``record`` instance.
-        """
-        for k in ('url', 'view', 'request', 'data'):
-            if not kwargs.get(k):
-                kwargs[k] = record.__dict__.get(k)
-
-        kwargs.update({
-            'logger': record.name,
-            'level': record.levelno,
-            'message': force_unicode(record.msg),
-            'server_name': app.config['NAME'],
-        })
-
-        # construct the checksum with the unparsed message
-        kwargs['checksum'] = construct_checksum(**kwargs)
-
-        # save the message with included formatting
-        kwargs['message'] = record.getMessage()
-
-        # If there's no exception being processed, exc_info may be a 3-tuple of None
-        # http://docs.python.org/library/sys.html#sys.exc_info
-        if record.exc_info and all(record.exc_info):
-            return self.create_from_exception(record.exc_info, **kwargs)
-
-        return self.process(
-            traceback=record.exc_text,
-            **kwargs
-        )
 
 class DummyClient(SentryClient):
     "Sends events into an empty void"

@@ -46,9 +46,13 @@ class RedisBackend(SentryBackend):
         schema = self._get_schema_name(schema)
         return self.conn.zcard('index:%s:%s' % (schema, index))
 
-    def list(self, schema, index='default', offset=0, limit=0, desc=False):
+    def list(self, schema, index='default', offset=0, limit=-1, desc=False):
         schema = self._get_schema_name(schema)
-        pk_set = self.conn.zrange('index:%s:%s' % (schema, index), start=offset, end=offset+limit, desc=desc)
+        if limit > 0:
+            end = offset+limit
+        else:
+            end = limit
+        pk_set = self.conn.zrange('index:%s:%s' % (schema, index), start=offset, end=end, desc=desc)
         return [(pk, self.conn.hgetall('data:%s:%s' % (schema, pk))) for pk in pk_set]
 
     def add_relation(self, from_schema, from_pk, to_schema, to_pk, score):
@@ -63,17 +67,20 @@ class RedisBackend(SentryBackend):
         else:
             self.conn.delete('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)))
 
-    def list_relations(self, from_schema, from_pk, to_schema, offset=0, limit=100, desc=False):
+    def list_relations(self, from_schema, from_pk, to_schema, offset=0, limit=-1, desc=False):
         # lists relations in a sorted index for base instance
         # XXX: this is O(n)+1, ugh
         to_schema = self._get_schema_name(to_schema)
 
-        if desc:
-            func = self.conn.zrevrange
+        key = 'rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, to_schema)
+        
+        if limit > 0:
+            end = offset+limit
         else:
-            func = self.conn.zrange
+            end = limit
+            
+        pk_set = self.conn.zrange(key, start=offset, end=end, desc=desc)
 
-        pk_set = func('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, to_schema), start=offset, num=offset+limit)
         return [(pk, self.conn.hgetall('data:%s:%s' % (to_schema, pk))) for pk in pk_set]
 
     def add_to_index(self, schema, pk, index, score):
@@ -83,7 +90,6 @@ class RedisBackend(SentryBackend):
         #        number of results that we want.
         if isinstance(score, datetime.datetime):
             score = score.strftime('%s.%m')
-        print schema, index, pk, score
         self.conn.zadd('index:%s:%s' % (self._get_schema_name(schema), index), pk, float(score))
 
     def remove_from_index(self, schema, pk, index):

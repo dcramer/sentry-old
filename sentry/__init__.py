@@ -88,6 +88,8 @@ try:
 except Exception, e:
     VERSION = 'unknown'
 
+__all__ = ('VERSION', 'store')
+
 # XXX: IT IS VERY IMPOTANT THAT NOTHING HAPPENS BEFORE APP IS DECLARED
 
 from flask import Flask
@@ -108,11 +110,15 @@ app.config.from_envvar('SENTRY_SETTINGS', silent=True)
 # Load configured datastore
 app.db = get_backend(app)
 
+# Load configured client
 app.client = get_client(app)
 
+# Flask-Babel (internationalization)
 app.babel = Babel(app)
+
+# Shortcuts to be exported for API
+store = app.client.store
 
 # Import views/templatetags to ensure registration
 import sentry.web.views
 import sentry.web.templatetags
-

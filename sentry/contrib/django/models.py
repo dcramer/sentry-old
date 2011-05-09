@@ -9,14 +9,14 @@ from django.db import transaction
 
 from sentry import app
 
-from sentry.client import get_client
-
 logger = logging.getLogger('sentry.errors')
 
 @transaction.commit_on_success
 def sentry_exception_handler(request=None, **kwargs):
     try:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
+        exc_info = sys.exc_info()
+
+        exc_type, exc_value, exc_traceback = exc_info
 
         if app.config['DEBUG'] or getattr(exc_type, 'skip_sentry', False):
             return
@@ -24,15 +24,12 @@ def sentry_exception_handler(request=None, **kwargs):
         if transaction.is_dirty():
             transaction.rollback()
 
-        extra = dict(
-            request=request,
-        )
+        event_id = app.client.store('ExceptionEvent', exc_info=exc_info)
 
-        message_id = get_client().create_from_exception(**extra)
         if request:
             # attach the sentry object to the request
             request.sentry = {
-                'id': message_id,
+                'id': event_id,
             }
     except Exception, exc:
         try:

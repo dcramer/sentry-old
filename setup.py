@@ -8,11 +8,8 @@ except ImportError:
     from setuptools import setup, find_packages
 
 tests_require = [
-    'Django',
-    'django-celery',
     'south',
-    'django-haystack',
-    'whoosh',
+    'unittest2',
 ]
 
 setup(
@@ -25,21 +22,19 @@ setup(
     packages=find_packages(exclude="example_project"),
     zip_safe=False,
     install_requires=[
-        'django-paging>=0.2.4',
-        'django-indexer>=0.3.0',
-        'django-templatetag-sugar>=0.1.0',
         'Flask',
         'Flask-Babel',
         # python-daemon and eventlet are required to run the Sentry indepenent webserver
         'python-daemon>=1.6',
         'eventlet>=0.9.15',
+        # uuid ensures compatibility with older versions of Python
         'uuid',
     ],
     dependency_links=[
     ],
     tests_require=tests_require,
     extras_require={'test': tests_require},
-    test_suite='runtests.runtests',
+    test_suite='unittest2.collector',
     include_package_data=True,
     entry_points = {
         'console_scripts': [

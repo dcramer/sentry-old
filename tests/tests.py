@@ -1,15 +1,24 @@
 import unittest2
 import datetime
 
-from sentry.client import client
+from sentry import app
+from sentry.db import get_backend
 from sentry.events import store
-from sentry.db import backend
 from sentry.models import Event, Tag, Group
 
 class SentryTest(unittest2.TestCase):
     def setUp(self):
-        # TODO: this should change schemas, or something
-        backend.conn.flushdb()
+        # XXX: might be a better way to do do this
+        app.config['DATASTORE'] = {
+            'ENGINE': 'sentry.db.backends.redis.RedisBackend',
+            'OPTIONS': {
+                'db': 9
+            }
+        }
+        app.db = get_backend(app)
+        
+        # Flush the Redis instance
+        app.db.conn.flushdb()
 
     # Some quick ugly high level tests to get shit working fast
     def test_create(self):
@@ -17,7 +26,7 @@ class SentryTest(unittest2.TestCase):
         # or tests wont pass :)
         now = datetime.datetime.now()
 
-        event, groups = client.store(
+        event, groups = app.client.store(
             type='sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
@@ -26,7 +35,9 @@ class SentryTest(unittest2.TestCase):
             date=now,
             time_spent=53,
             data={
-                'msg_value': 'hello world',
+                '__event__': {
+                    'msg_value': 'hello world',
+                }
             }
         )
         self.assertEquals(len(groups), 1)
@@ -71,7 +82,7 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(tag[0], 'view')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
-        event, groups = client.store(
+        event, groups = app.client.store(
             type='sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
@@ -79,7 +90,9 @@ class SentryTest(unittest2.TestCase):
             date=now + datetime.timedelta(seconds=1),
             time_spent=100,
             data={
-                'msg_value': 'hello world',
+                '__event__': {
+                    'msg_value': 'hello world',
+                },
             }
         )
 
@@ -102,7 +115,7 @@ class SentryTest(unittest2.TestCase):
         self.assertEquals(tag[0], 'view')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
-        events = group.get_relations(Event)
+        events = group.get_relations(Event, desc=False)
 
         self.assertEquals(len(events), 2)
 
@@ -163,5 +176,11 @@ class SentryTest(unittest2.TestCase):
 
         data = event.data
 
-        self.assertEquals(data['exc_value'], 'foo bar')
-        self.assertEquals(data['exc_type'], 'ValueError')
+        self.assertTrue('__event__' in data)
+        event_data = data['__event__']
+        self.assertTrue('exc_value' in event_data)
+        self.assertEquals(event_data['exc_value'], 'foo bar')
+        self.assertTrue('exc_type' in event_data)
+        self.assertEquals(event_data['exc_type'], 'ValueError')
+        self.assertTrue('exc_frames' in event_data)
+        
