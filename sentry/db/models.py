@@ -16,6 +16,8 @@ def to_db(model, values):
         field = model._meta.fields.get(k)
         if field:
             v = field.to_db(v)
+            if v is None:
+                v = ''
         else:
             v = simplejson.dumps(v)
         result[k] = v
@@ -210,10 +212,6 @@ class Model(object):
             try:
                 val = field.to_python(kwargs.pop(attname))
             except KeyError:
-                # This is done with an exception rather than the
-                # default argument on pop because we don't want
-                # get_default() to be evaluated, and then not used.
-                # Refs #12057.
                 val = field.get_default()
             setattr(self, attname, val)
         if kwargs:
@@ -339,7 +337,7 @@ class Field(object):
 
     def get_default(self):
         if not self.default:
-            value = None
+            value = self.to_python(None)
         elif callable(self.default):
             value = self.default()
         else:
@@ -362,6 +360,8 @@ class String(Field):
     def to_python(self, value=None):
         if value:
             value = unicode(value)
+        else:
+            value = u''
         return value
 
 class Integer(Field):
@@ -394,15 +394,14 @@ class DateTime(Field):
         return value
 
 class List(Field):
-    def get_default(self):
-        return []
-    
     def to_db(self, value=None):
         if isinstance(value, (tuple, list)):
             value = pickle.dumps(value)
         return value
 
     def to_python(self, value=None):
-        if isinstance(value, basestring):
+        if not value:
+            value = []
+        elif isinstance(value, basestring):
             value = pickle.loads(value)
         return value

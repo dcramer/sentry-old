@@ -43,7 +43,7 @@ class ORMTest(BaseTest):
         self.assertEquals(inst.str_, 'foo')
         self.assertEquals(inst.int_, 0)
         self.assertEquals(inst.float_, 0.1)
-        self.assertTrue(len(inst.list_), 3)
+        self.assertEquals(len(inst.list_), 3)
         self.assertTrue(1 in inst.list_)
         self.assertTrue(2 in inst.list_)
         self.assertTrue(3 in inst.list_)
@@ -60,7 +60,7 @@ class ORMTest(BaseTest):
         self.assertEquals(inst.str_, 'foo')
         self.assertEquals(inst.int_, 0)
         self.assertEquals(inst.float_, 0.1)
-        self.assertTrue(len(inst.list_), 3)
+        self.assertEquals(len(inst.list_), 3)
         self.assertTrue(1 in inst.list_)
         self.assertTrue(2 in inst.list_)
         self.assertTrue(3 in inst.list_)
@@ -105,7 +105,7 @@ class ORMTest(BaseTest):
 
         self.assertRaises(TestModel.DoesNotExist, TestModel.objects.get, 'foo')
 
-    def test_save(self):
+    def test_saving_behavior(self):
         self.assertEquals(TestModel.objects.count(), 0)
 
         inst = TestModel()
@@ -120,6 +120,38 @@ class ORMTest(BaseTest):
         self.assertEquals(TestModel.objects.count(), 1)
         self.assertEquals(TestModel.objects.get(inst.pk), inst)
 
+        self.assertEquals(inst.str_, '')
+        self.assertEquals(inst.int_, 0)
+        self.assertEquals(inst.float_, 0.0)
+        self.assertEquals(len(inst.list_), 0)
+        
+        inst.update(str_='foo')
+
+        self.assertEquals(TestModel.objects.count(), 1)
+        self.assertEquals(inst.str_, 'foo')
+        self.assertEquals(inst.int_, 0)
+        self.assertEquals(inst.float_, 0.0)
+        self.assertEquals(len(inst.list_), 0)
+        
+        inst = TestModel.objects.get(pk=inst.pk)
+
+        self.assertEquals(inst.str_, 'foo')
+        self.assertEquals(inst.int_, 0)
+        self.assertEquals(inst.float_, 0.0)
+        self.assertEquals(len(inst.list_), 0)
+
+        inst = TestModel(float_=1.0)
+        
+        self.assertFalse(inst.pk)
+        
+        inst.save()
+
+        self.assertEquals(TestModel.objects.count(), 2)
+        
+        self.assertEquals(inst.str_, '')
+        self.assertEquals(inst.int_, 0)
+        self.assertEquals(inst.float_, 1.0)
+        self.assertEquals(len(inst.list_), 0)
 
 class SentryTest(BaseTest):
     # Some quick ugly high level tests to get shit working fast
