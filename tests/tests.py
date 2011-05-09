@@ -183,4 +183,13 @@ class SentryTest(unittest2.TestCase):
         self.assertTrue('exc_type' in event_data)
         self.assertEquals(event_data['exc_type'], 'ValueError')
         self.assertTrue('exc_frames' in event_data)
-        
+        self.assertEquals(len(event_data['exc_frames']), 1)
+        frame = event_data['exc_frames'][0]
+        self.assertTrue('function' in frame)
+        self.assertEquals(frame['function'], 'test_exception_event')
+        self.assertTrue('lineno' in frame)
+        self.assertTrue(frame['lineno'] > 0)
+        self.assertTrue('module' in frame)
+        self.assertEquals(frame['module'], 'tests.tests')
+        self.assertTrue('id' in frame)
+        self.assertTrue('filename' in frame)
