@@ -111,21 +111,8 @@ class Manager(object):
         return self.model(pk, **data)
 
     def create(self, **values):
-        pk = values.pop('pk', None)
-        if pk:
-            app.db.set(self.model, pk)
-        else:
-            pk = app.db.add(self.model)
-
-        instance = self.model(pk, **values)
+        instance = self.model(**values)
         instance.save()
-
-        # Ensure we save our default index (this only happens
-        # on instance creation)
-        ordering = self.model._meta.ordering
-        if ordering == 'default':
-            value = datetime.datetime.now()
-            self.add_to_index(pk, 'default', value)
 
         return instance
 
@@ -259,11 +246,31 @@ class Model(object):
         return result
 
     def save(self):
+        model = self.__class__
+        
         self.before_save()
+
         values = dict((name, getattr(self, name)) for name in self._meta.fields.iterkeys())
+
+        # Ensure we've grabbed a primary key
+        # XXX: API might need some work here yet
+        created = not self.pk
+        if created:
+            self.pk = app.db.add(model)
+
         self.update(**values)
+        
+        if created:
+            # Ensure we save our default index (this only happens
+            # on instance creation)
+            ordering = model._meta.ordering
+            if ordering == 'default':
+                value = datetime.datetime.now()
+                self.objects.add_to_index(self.pk, 'default', value)
 
     def update(self, **values):
+        assert self.pk
+        
         model = self.__class__
 
         result = app.db.set(model, self.pk, **to_db(model, values))
@@ -283,6 +290,8 @@ class Model(object):
         return result
 
     def delete(self):
+        assert self.pk
+
         model = self.__class__
         
         # remove indexes

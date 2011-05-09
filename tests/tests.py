@@ -82,18 +82,44 @@ class ORMTest(BaseTest):
         self.assertTrue(3 in inst.list_)
 
     def test_get(self):
+        self.assertEquals(TestModel.objects.count(), 0)
+
         self.assertRaises(TestModel.DoesNotExist, TestModel.objects.get, 'foo')
 
         inst = TestModel.objects.create(str_='foo')
+
+        self.assertEquals(TestModel.objects.count(), 1)
 
         self.assertEquals(TestModel.objects.get(inst.pk), inst)
 
     def test_delete(self):
+        self.assertEquals(TestModel.objects.count(), 0)
+
         inst = TestModel.objects.create(str_='foo')
+
+        self.assertEquals(TestModel.objects.count(), 1)
         
         inst.delete()
 
+        self.assertEquals(TestModel.objects.count(), 0)
+
         self.assertRaises(TestModel.DoesNotExist, TestModel.objects.get, 'foo')
+
+    def test_save(self):
+        self.assertEquals(TestModel.objects.count(), 0)
+
+        inst = TestModel()
+        
+        self.assertFalse(inst.pk)
+        
+        self.assertEquals(TestModel.objects.count(), 0)
+        
+        inst.save()
+        
+        self.assertTrue(inst.pk)
+        self.assertEquals(TestModel.objects.count(), 1)
+        self.assertEquals(TestModel.objects.get(inst.pk), inst)
+
 
 class SentryTest(BaseTest):
     # Some quick ugly high level tests to get shit working fast
