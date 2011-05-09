@@ -1,5 +1,6 @@
-import unittest2
 import datetime
+import sys
+import unittest2
 
 from sentry import app
 from sentry.db import get_backend, models
@@ -293,7 +294,7 @@ class SentryTest(BaseTest):
         self.assertEquals(event.type, 'sentry.events.MessageEvent')
         self.assertEquals(event.time_spent, 0)
 
-    def test_exception_event(self):
+    def test_exception_event_without_exc_info(self):
         try:
             raise ValueError('foo bar')
         except:
@@ -320,7 +321,50 @@ class SentryTest(BaseTest):
         self.assertEquals(len(event_data['exc_frames']), 1)
         frame = event_data['exc_frames'][0]
         self.assertTrue('function' in frame)
-        self.assertEquals(frame['function'], 'test_exception_event')
+        self.assertEquals(frame['function'], 'test_exception_event_without_exc_info')
+        self.assertTrue('lineno' in frame)
+        self.assertTrue(frame['lineno'] > 0)
+        self.assertTrue('module' in frame)
+        self.assertEquals(frame['module'], 'tests.tests')
+        self.assertTrue('id' in frame)
+        self.assertTrue('filename' in frame)
+
+
+    def test_exception_event_with_exc_info(self):
+        try:
+            raise ValueError('foo bar')
+        except:
+            exc_info = sys.exc_info()
+
+        # We raise a second event to ensure we actually reference
+        # the first event
+        try:
+            raise SyntaxError('baz')
+        except:
+            pass
+
+        # ExceptionEvent pulls in sys.exc_info()
+        # by default
+        event_id = store('ExceptionEvent', exc_info=exc_info)
+
+        event = Event.objects.get(event_id)
+
+        self.assertEquals(event.type, 'sentry.events.ExceptionEvent')
+        self.assertEquals(event.time_spent, 0)
+
+        data = event.data
+
+        self.assertTrue('__event__' in data)
+        event_data = data['__event__']
+        self.assertTrue('exc_value' in event_data)
+        self.assertEquals(event_data['exc_value'], 'foo bar')
+        self.assertTrue('exc_type' in event_data)
+        self.assertEquals(event_data['exc_type'], 'ValueError')
+        self.assertTrue('exc_frames' in event_data)
+        self.assertEquals(len(event_data['exc_frames']), 1)
+        frame = event_data['exc_frames'][0]
+        self.assertTrue('function' in frame)
+        self.assertEquals(frame['function'], 'test_exception_event_with_exc_info')
         self.assertTrue('lineno' in frame)
         self.assertTrue(frame['lineno'] > 0)
         self.assertTrue('module' in frame)

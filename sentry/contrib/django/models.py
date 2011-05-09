@@ -26,6 +26,8 @@ def sentry_exception_handler(request=None, **kwargs):
 
         event_id = app.client.store('ExceptionEvent', exc_info=exc_info)
 
+        exc_info = None
+
         if request:
             # attach the sentry object to the request
             request.sentry = {
