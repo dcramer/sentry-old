@@ -90,3 +90,17 @@ The other major change, is that labels like "logger", and "server" are now part 
 
     from sentry import capture
     capture('Message', message='hello world', tags=[('logger', 'root'), ('level', 'error'), ('url', 'http://example.com')])
+
+------------
+What's Left?
+------------
+
+This is a rough list of features/APIs which need to be completed (this is better described in the issue tracker):
+
+* Filter API
+* Plugin API
+* Custom Views (still using the old "render everything" logic from Sentry 1.x)
+* Dashboard View
+* Django Integration (some draft code is present)
+* SQLAlchemy Backend
+* Full test coverage should exist for Models and Backends
