@@ -6,6 +6,8 @@ from flask import render_template
 from sentry import app
 from sentry.utils import transform
 
+__all__ = ('BaseEvent', 'Exception', 'Message', 'Query')
+
 class BaseEvent(object):
     def to_string(self):
         raise NotImplementedError
@@ -25,7 +27,7 @@ class BaseEvent(object):
             'tags': self.get_tags(**kwargs),
         }
 
-class ExceptionEvent(BaseEvent):
+class Exception(BaseEvent):
     """
     Exceptions store the following metadata:
 
@@ -192,7 +194,7 @@ class ExceptionEvent(BaseEvent):
                 })
         return frames
 
-class MessageEvent(BaseEvent):
+class Message(BaseEvent):
     """
     Messages store the following metadata:
 

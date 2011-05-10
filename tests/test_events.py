@@ -14,7 +14,7 @@ class SentryTest(BaseTest):
         now = datetime.datetime.now()
 
         event, groups = app.client.store(
-            'sentry.events.MessageEvent',
+            'sentry.events.Message',
             tags=(
                 ('server', 'foo.bar'),
                 ('view', 'foo.bar.zoo.baz'),
@@ -34,7 +34,7 @@ class SentryTest(BaseTest):
         group_id = group.pk
 
         self.assertTrue(group.pk)
-        self.assertEquals(group.type, 'sentry.events.MessageEvent')
+        self.assertEquals(group.type, 'sentry.events.Message')
         self.assertEquals(group.time_spent, 53)
         self.assertEquals(group.count, 1)
         self.assertEquals(len(group.tags), 2)
@@ -71,7 +71,7 @@ class SentryTest(BaseTest):
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         event, groups = app.client.store(
-            'sentry.events.MessageEvent',
+            'sentry.events.Message',
             tags=(
                 ('server', 'foo.bar'),
             ),
@@ -141,11 +141,11 @@ class SentryTest(BaseTest):
         self.assertEquals(len(groups), 1)
 
     def test_message_event(self):
-        event_id = capture('MessageEvent', message='foo')
+        event_id = capture('Message', message='foo')
 
         event = Event.objects.get(event_id)
 
-        self.assertEquals(event.type, 'sentry.events.MessageEvent')
+        self.assertEquals(event.type, 'sentry.events.Message')
         self.assertEquals(event.time_spent, 0)
 
     def test_exception_event_without_exc_info(self):
@@ -154,13 +154,13 @@ class SentryTest(BaseTest):
         except:
             pass
 
-        # ExceptionEvent pulls in sys.exc_info()
+        # Exception pulls in sys.exc_info()
         # by default
-        event_id = capture('ExceptionEvent')
+        event_id = capture('Exception')
 
         event = Event.objects.get(event_id)
 
-        self.assertEquals(event.type, 'sentry.events.ExceptionEvent')
+        self.assertEquals(event.type, 'sentry.events.Exception')
         self.assertEquals(event.time_spent, 0)
 
         data = event.data
@@ -197,13 +197,13 @@ class SentryTest(BaseTest):
         except:
             pass
 
-        # ExceptionEvent pulls in sys.exc_info()
+        # Exception pulls in sys.exc_info()
         # by default
-        event_id = capture('ExceptionEvent', exc_info=exc_info)
+        event_id = capture('Exception', exc_info=exc_info)
 
         event = Event.objects.get(event_id)
 
-        self.assertEquals(event.type, 'sentry.events.ExceptionEvent')
+        self.assertEquals(event.type, 'sentry.events.Exception')
         self.assertEquals(event.time_spent, 0)
 
         data = event.data

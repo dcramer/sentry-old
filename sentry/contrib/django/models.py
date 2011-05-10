@@ -24,7 +24,7 @@ def sentry_exception_handler(request=None, **kwargs):
         if transaction.is_dirty():
             transaction.rollback()
 
-        event_id = app.client.capture('sentry.events.ExceptionEvent', exc_info=exc_info)
+        event_id = app.client.capture('sentry.events.Exception', exc_info=exc_info)
 
         exc_info = None
 

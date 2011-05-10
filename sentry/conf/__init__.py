@@ -77,15 +77,15 @@ class SentryConfig(object):
     VIEWS = {
         'errors': {
             'name': 'Exceptions',
-            'event': 'sentry.events.ExceptionEvent',
+            'event': 'sentry.events.Exception',
         },
         'events': {
             'name': 'Messages',
-            'event': 'sentry.events.MessageEvent',
+            'event': 'sentry.events.Message',
         },
         'sql': {
             'name': 'SQL',
-            'event': 'sentry.events.QueryEvent',
+            'event': 'sentry.events.Query',
         },
     }
     

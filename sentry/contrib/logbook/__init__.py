@@ -19,6 +19,6 @@ class SentryLogbookHandler(logbook.Handler):
             data=record.extra,
         )
         if record.exc_info:
-            return capture('sentry.events.ExceptionEvent', exc_inf=record.exc_info, **kwargs)
-        return capture('sentry.events.MessageEvent', **kwargs)
+            return capture('sentry.events.Exception', exc_inf=record.exc_info, **kwargs)
+        return capture('sentry.events.Exception', **kwargs)
 
