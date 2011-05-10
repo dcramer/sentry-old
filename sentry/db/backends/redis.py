@@ -9,6 +9,23 @@ class RedisBackend(SentryBackend):
     def __init__(self, host='localhost', port=6379, db=0):
         self.conn = redis.Redis(host, port, db)
 
+    ## Keys
+    
+    def _get_data_key(self, schema, pk):
+        return 'data:%s:%s' % (self._get_schema_name(schema), pk)
+
+    def _get_metadata_key(self, schema, pk):
+        return 'metadata:%s:%s' % (self._get_schema_name(schema), pk)
+
+    def _get_index_key(self, schema, index):
+        return 'index:%s:%s' % (self._get_schema_name(schema), index)
+
+    def _get_relation_key(self, from_schema, from_pk, to_schema):
+        return 'rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema))
+
+    def _get_constraint_key(self, schema, kwargs):
+        return 'cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**kwargs))
+
     ## Hash table lookups
 
     def add(self, schema, **values):
@@ -19,69 +36,63 @@ class RedisBackend(SentryBackend):
         return pk
 
     def delete(self, schema, pk):
-        self.conn.delete('data:%s:%s' % (self._get_schema_name(schema), pk))
-        self.conn.delete('metadata:%s:%s' % (self._get_schema_name(schema), pk))
+        self.conn.delete(self._get_data_key(schema, pk))
+        self.conn.delete(self._get_metadata_key(schema, pk))
 
     def set(self, schema, pk, **values):
         if values:
-            self.conn.hmset('data:%s:%s' % (self._get_schema_name(schema), pk), values)
+            self.conn.hmset(self._get_data_key(schema, pk), values)
 
     def get(self, schema, pk):
-        return self.conn.hgetall('data:%s:%s' % (self._get_schema_name(schema), pk))
+        return self.conn.hgetall(self._get_data_key(schema, pk))
 
     def incr(self, schema, pk, key, amount=1):
-        return self.conn.hincrby('data:%s:%s' % (self._get_schema_name(schema), pk), key, amount)
+        return self.conn.hincrby(self._get_data_key(schema, pk), key, amount)
 
     # meta data is stored in a seperate key to avoid collissions and heavy getall pulls
 
     def set_meta(self, schema, pk, **values):
-        self.conn.hmset('metadata:%s:%s' % (self._get_schema_name(schema), pk), values)
+        self.conn.hmset(self._get_metadata_key(schema, pk), values)
 
     def get_meta(self, schema, pk):
-        return self.conn.hgetall('metadata:%s:%s' % (self._get_schema_name(schema), pk))
-
-    ## Indexes using sorted sets
+        return self.conn.hgetall(self._get_metadata_key(schema, pk))
 
     def count(self, schema, index='default'):
-        schema = self._get_schema_name(schema)
-        return self.conn.zcard('index:%s:%s' % (schema, index))
+        return self.conn.zcard(self._get_index_key(schema, index))
 
     def list(self, schema, index='default', offset=0, limit=-1, desc=False):
-        schema = self._get_schema_name(schema)
         if limit > 0:
             end = offset+limit
         else:
             end = limit
-        pk_set = self.conn.zrange('index:%s:%s' % (schema, index), start=offset, end=end, desc=desc)
-        return [(pk, self.conn.hgetall('data:%s:%s' % (schema, pk))) for pk in pk_set]
+        pk_set = self.conn.zrange(self._get_index_key(schema, index), start=offset, end=end, desc=desc)
+        return [(pk, self.conn.hgetall(self._get_data_key(schema, pk))) for pk in pk_set]
+
+    ## Indexes using sorted sets
 
     def add_relation(self, from_schema, from_pk, to_schema, to_pk, score):
         # adds a relation to a sorted index for base instance
         if isinstance(score, datetime.datetime):
             score = score.strftime('%s.%m')
-        self.conn.zadd('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)), to_pk, float(score))
+        self.conn.zadd(self._get_relation_key(from_schema, from_pk, to_schema), to_pk, float(score))
 
     def remove_relation(self, from_schema, from_pk, to_schema, to_pk=None):
         if to_pk:
-            self.conn.zrem('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)), to_pk)
+            self.conn.zrem(self._get_relation_key(from_schema, from_pk, to_schema), to_pk)
         else:
-            self.conn.delete('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)))
+            self.conn.delete(self._get_relation_key(from_schema, from_pk, to_schema))
 
     def list_relations(self, from_schema, from_pk, to_schema, offset=0, limit=-1, desc=False):
         # lists relations in a sorted index for base instance
         # XXX: this is O(n)+1, ugh
-        to_schema = self._get_schema_name(to_schema)
-
-        key = 'rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, to_schema)
-        
         if limit > 0:
             end = offset+limit
         else:
             end = limit
             
-        pk_set = self.conn.zrange(key, start=offset, end=end, desc=desc)
+        pk_set = self.conn.zrange(self._get_relation_key(from_schema, from_pk, to_schema), start=offset, end=end, desc=desc)
 
-        return [(pk, self.conn.hgetall('data:%s:%s' % (to_schema, pk))) for pk in pk_set]
+        return [(pk, self.conn.hgetall(self._get_data_key(to_schema, pk))) for pk in pk_set]
 
     def add_to_index(self, schema, pk, index, score):
         # adds an instance to a sorted index
@@ -90,23 +101,23 @@ class RedisBackend(SentryBackend):
         #        number of results that we want.
         if isinstance(score, datetime.datetime):
             score = score.strftime('%s.%m')
-        self.conn.zadd('index:%s:%s' % (self._get_schema_name(schema), index), pk, float(score))
+        self.conn.zadd(self._get_index_key(schema, index), pk, float(score))
 
     def remove_from_index(self, schema, pk, index):
-        self.conn.zrem('index:%s:%s' % (self._get_schema_name(schema), index), pk)
+        self.conn.zrem(self._get_index_key(schema, index), pk)
 
     ## Generic indexes
 
     # TODO: can we combine constraint indexes with sort indexes? (at least the API)
 
-    def add_to_cindex(self, schema, pk, **keys):
+    def add_to_cindex(self, schema, pk, **kwargs):
         # adds an index to a composite index (for checking uniqueness)
-        self.conn.sadd('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)), pk)
+        self.conn.sadd(self._get_constraint_key(schema, kwargs), pk)
 
-    def remove_from_cindex(self, schema, pk, **keys):
+    def remove_from_cindex(self, schema, pk, **kwargs):
         # adds an index to a composite index (for checking uniqueness)
-        self.conn.srem('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys)), pk)
+        self.conn.srem(self._get_constraint_key(schema, kwargs), pk)
 
-    def list_by_cindex(self, schema, **keys):
+    def list_by_cindex(self, schema, **kwargs):
         # returns a list of keys associated with a constraint
-        return list(self.conn.smembers('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**keys))))
+        return list(self.conn.smembers(self._get_constraint_key(schema, kwargs)))

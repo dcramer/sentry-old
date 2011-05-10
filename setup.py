@@ -8,7 +8,7 @@ except ImportError:
     from setuptools import setup, find_packages
 
 tests_require = [
-    'south',
+    'nose',
     'unittest2',
 ]
 
@@ -34,7 +34,7 @@ setup(
     ],
     tests_require=tests_require,
     extras_require={'test': tests_require},
-    test_suite='unittest2.collector',
+    test_suite='nose.main',
     include_package_data=True,
     entry_points = {
         'console_scripts': [
