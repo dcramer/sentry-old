@@ -39,3 +39,11 @@ class RedisBackendTest(BaseTest):
         
         self.assertFalse(self.redis.hgetall(key))
         self.assertFalse(self.redis.hgetall(metakey))
+
+    def test_set(self):
+        pk = 'foo'
+
+        key = self.backend._get_data_key(self.schema, pk)
+        self.backend.set(self.schema, pk, **{'foo': 'bar'})
+        self.assertEquals(len(self.redis.hgetall(key)), 1)
+        self.assertEquals(self.redis.hget(key, 'foo'), 'bar')
