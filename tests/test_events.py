@@ -148,6 +148,14 @@ class SentryTest(BaseTest):
         self.assertEquals(event.type, 'sentry.events.Message')
         self.assertEquals(event.time_spent, 0)
 
+    def test_query_event(self):
+        event_id = capture('Query', query='SELECT * FROM table', engine='psycopg2', time_spent=36)
+
+        event = Event.objects.get(event_id)
+
+        self.assertEquals(event.type, 'sentry.events.Query')
+        self.assertEquals(event.time_spent, 36)
+
     def test_exception_event_without_exc_info(self):
         try:
             raise ValueError('foo bar')

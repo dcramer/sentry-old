@@ -9,10 +9,10 @@ from sentry.utils import transform
 __all__ = ('BaseEvent', 'Exception', 'Message', 'Query')
 
 class BaseEvent(object):
-    def to_string(self):
+    def to_string(self, event, data):
         raise NotImplementedError
     
-    def to_html(self):
+    def to_html(self, event, data):
         return
     
     def get_data(self, **kwargs):
@@ -211,13 +211,16 @@ class Message(BaseEvent):
             'message': message,
         }
 
-class SQLEvent(BaseEvent):
+class Query(BaseEvent):
     """
     Messages store the following metadata:
 
     - query: 'SELECT * FROM table'
     - engine: 'postgesql_psycopg2'
     """
+    def to_string(self, event, data):
+        return data['query']
+    
     def get_event_hash(self, query, engine, **kwargs):
         return [query, engine]
 
