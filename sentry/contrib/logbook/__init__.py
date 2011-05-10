@@ -1,8 +1,10 @@
 import logbook
 
+import sys
+
 class SentryLogbookHandler(logbook.Handler):
     def emit(self, record):
-        from sentry.events import store
+        from sentry import capture
 
         # Avoid typical config issues by overriding loggers behavior
         if record.name == 'sentry.errors':
@@ -16,8 +18,7 @@ class SentryLogbookHandler(logbook.Handler):
             logger=record.channel,
             data=record.extra,
         )
-        client = get_client()
         if record.exc_info:
-            return store('MessageEvent', exc_inf=record.exc_info, **kwargs)
-        return store('MessageEvent', **kwargs)
+            return capture('sentry.events.ExceptionEvent', exc_inf=record.exc_info, **kwargs)
+        return capture('sentry.events.MessageEvent', **kwargs)
 

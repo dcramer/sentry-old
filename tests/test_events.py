@@ -3,8 +3,7 @@ from . import BaseTest
 import datetime
 import sys
 
-from sentry import app
-from sentry.events import store
+from sentry import app, capture
 from sentry.models import Event, Tag, Group
 
 class SentryTest(BaseTest):
@@ -15,7 +14,7 @@ class SentryTest(BaseTest):
         now = datetime.datetime.now()
 
         event, groups = app.client.store(
-            type='sentry.events.MessageEvent',
+            'sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
                 ('view', 'foo.bar.zoo.baz'),
@@ -24,9 +23,10 @@ class SentryTest(BaseTest):
             time_spent=53,
             data={
                 '__event__': {
-                    'msg_value': 'hello world',
+                    'message': 'hello world'
                 }
-            }
+            },
+            event_id='foobar',
         )
         self.assertEquals(len(groups), 1)
 
@@ -71,7 +71,7 @@ class SentryTest(BaseTest):
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         event, groups = app.client.store(
-            type='sentry.events.MessageEvent',
+            'sentry.events.MessageEvent',
             tags=(
                 ('server', 'foo.bar'),
             ),
@@ -79,9 +79,10 @@ class SentryTest(BaseTest):
             time_spent=100,
             data={
                 '__event__': {
-                    'msg_value': 'hello world',
+                    'message': 'hello world',
                 },
-            }
+            },
+            event_id='foobar2',
         )
 
         self.assertEquals(len(groups), 1)
@@ -140,7 +141,7 @@ class SentryTest(BaseTest):
         self.assertEquals(len(groups), 1)
 
     def test_message_event(self):
-        event_id = store('MessageEvent', 'foo')
+        event_id = capture('MessageEvent', message='foo')
 
         event = Event.objects.get(event_id)
 
@@ -155,7 +156,7 @@ class SentryTest(BaseTest):
 
         # ExceptionEvent pulls in sys.exc_info()
         # by default
-        event_id = store('ExceptionEvent')
+        event_id = capture('ExceptionEvent')
 
         event = Event.objects.get(event_id)
 
@@ -166,13 +167,13 @@ class SentryTest(BaseTest):
 
         self.assertTrue('__event__' in data)
         event_data = data['__event__']
-        self.assertTrue('exc_value' in event_data)
-        self.assertEquals(event_data['exc_value'], 'foo bar')
-        self.assertTrue('exc_type' in event_data)
-        self.assertEquals(event_data['exc_type'], 'ValueError')
-        self.assertTrue('exc_frames' in event_data)
-        self.assertEquals(len(event_data['exc_frames']), 1)
-        frame = event_data['exc_frames'][0]
+        self.assertTrue('value' in event_data)
+        self.assertEquals(event_data['value'], 'foo bar')
+        self.assertTrue('type' in event_data)
+        self.assertEquals(event_data['type'], 'ValueError')
+        self.assertTrue('frames' in event_data)
+        self.assertEquals(len(event_data['frames']), 1)
+        frame = event_data['frames'][0]
         self.assertTrue('function' in frame)
         self.assertEquals(frame['function'], 'test_exception_event_without_exc_info')
         self.assertTrue('lineno' in frame)
@@ -198,7 +199,7 @@ class SentryTest(BaseTest):
 
         # ExceptionEvent pulls in sys.exc_info()
         # by default
-        event_id = store('ExceptionEvent', exc_info=exc_info)
+        event_id = capture('ExceptionEvent', exc_info=exc_info)
 
         event = Event.objects.get(event_id)
 
@@ -209,13 +210,13 @@ class SentryTest(BaseTest):
 
         self.assertTrue('__event__' in data)
         event_data = data['__event__']
-        self.assertTrue('exc_value' in event_data)
-        self.assertEquals(event_data['exc_value'], 'foo bar')
-        self.assertTrue('exc_type' in event_data)
-        self.assertEquals(event_data['exc_type'], 'ValueError')
-        self.assertTrue('exc_frames' in event_data)
-        self.assertEquals(len(event_data['exc_frames']), 1)
-        frame = event_data['exc_frames'][0]
+        self.assertTrue('value' in event_data)
+        self.assertEquals(event_data['value'], 'foo bar')
+        self.assertTrue('type' in event_data)
+        self.assertEquals(event_data['type'], 'ValueError')
+        self.assertTrue('frames' in event_data)
+        self.assertEquals(len(event_data['frames']), 1)
+        frame = event_data['frames'][0]
         self.assertTrue('function' in frame)
         self.assertEquals(frame['function'], 'test_exception_event_with_exc_info')
         self.assertTrue('lineno' in frame)

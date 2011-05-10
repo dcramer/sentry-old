@@ -88,7 +88,7 @@ try:
 except Exception, e:
     VERSION = 'unknown'
 
-__all__ = ('VERSION', 'store')
+__all__ = ('VERSION', 'capture')
 
 # XXX: IT IS VERY IMPOTANT THAT NOTHING HAPPENS BEFORE APP IS DECLARED
 
@@ -117,8 +117,9 @@ app.client = get_client(app)
 app.babel = Babel(app)
 
 # Shortcuts to be exported for API
-store = app.client.store
+capture = app.client.capture
 
 # Import views/templatetags to ensure registration
-import sentry.web.views
+import sentry.web.api
 import sentry.web.templatetags
+import sentry.web.views

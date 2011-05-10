@@ -12,10 +12,10 @@ if not settings.configured:
     os.environ['DJANGO_SETTINGS_MODULE'] = 'sentry.conf.server'
 os.environ['CELERY_LOADER'] = 'django'
 
-import django.core.handlers.wsgi
+import django.core.events.wsgi
 
 # Run WSGI handler for the application
-application = django.core.handlers.wsgi.WSGIHandler()
+application = django.core.events.wsgi.WSGIHandler()
 
 if settings.SESSION_FILE_PATH:
     try:

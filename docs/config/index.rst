@@ -11,11 +11,11 @@ Integration with ``logging``
 Sentry supports the ability to directly tie into the ``logging`` module. To use it simply add ``SentryHandler`` to your logger::
 
 	import logging
-	from sentry.client.handlers import SentryHandler
+	from sentry.client.events import SentryHandler
 	
 	logger = logging.getLogger()
 	# ensure we havent already registered the handler
-	if SentryHandler not in map(lambda x: x.__class__, logger.handlers):
+	if SentryHandler not in map(lambda x: x.__class__, logger.events):
 	    logger.addHandler(SentryHandler())
 	
 	    # Add StreamHandler to sentry's default so you can catch missed exceptions

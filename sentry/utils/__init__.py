@@ -1,5 +1,4 @@
 import hashlib
-import hmac
 import logging
 import sys
 import uuid
@@ -223,19 +222,6 @@ def is_float(var):
     except ValueError:
         return False
     return True
-
-def get_signature(message, timestamp):
-    return hmac.new(sentry.app.config['KEY'], '%s %s' % (timestamp, message), hashlib.sha1).hexdigest()
-
-def get_auth_header(signature, timestamp, client):
-    return 'Sentry sentry_signature=%s, sentry_timestamp=%s, sentry_client=%s' % (
-        signature,
-        timestamp,
-        sentry.VERSION,
-    )
-
-def parse_auth_header(header):
-    return dict(map(lambda x: x.strip().split('='), header.split(' ', 1)[1].split(',')))
 
 class MockRequest(object):
     GET = {}
