@@ -75,18 +75,21 @@ class SentryConfig(object):
     MAX_LENGTH_STRING = 200
 
     VIEWS = {
-        'errors': {
-            'name': 'Exceptions',
-            'event': 'sentry.events.Exception',
+        'everything': {
+            'name': 'Everything',
         },
-        'events': {
-            'name': 'Messages',
-            'event': 'sentry.events.Message',
-        },
-        'sql': {
-            'name': 'SQL',
-            'event': 'sentry.events.Query',
-        },
+        # 'errors': {
+        #     'name': 'Exceptions',
+        #     'events': ['sentry.events.Exception'],
+        # },
+        # 'events': {
+        #     'name': 'Messages',
+        #     'events': ['sentry.events.Message'],
+        # },
+        # 'sql': {
+        #     'name': 'SQL',
+        #     'events': ['sentry.events.Query'],
+        # },
     }
     
     DATASTORE = {

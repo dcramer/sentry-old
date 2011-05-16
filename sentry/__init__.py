@@ -67,6 +67,7 @@ with grouping. For example, if you specify the following views:
 - exceptions by [project, url]
 - queries by [project, url]
 - exceptions by [func]
+- all messages by [func]
 
 We should be able to determine (automatically?) that we want a top level view of things
 broken down by project, and once there, being able to break down those projects by either

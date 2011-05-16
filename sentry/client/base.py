@@ -143,7 +143,7 @@ class SentryClient(object):
 
         # For each view that handles this event, we need to create a Group
         for view in app.config['VIEWS'].itervalues():
-            if view['event'] == event_type:
+            if event_type in view.get('events', [event_type]):
                 # We only care about tags which are required for this view
 
                 event_tags = [(k, v) for k, v in tags if k in view.get('tags', [])]
@@ -153,7 +153,7 @@ class SentryClient(object):
                 tc, created = TagCount.objects.get_or_create(
                     hash=tags_hash,
                     defaults={
-                        'tags': tags,
+                        'tags': event_tags,
                         'count': 1,
                     }
                 )
