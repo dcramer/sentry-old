@@ -142,7 +142,7 @@ class SentryClient(object):
         groups = []
 
         # For each view that handles this event, we need to create a Group
-        for view in app.config['VIEWS'].itervalues():
+        for view in app.config['SLICES'].itervalues():
             if event_type in view.get('events', [event_type]):
                 # We only care about tags which are required for this view
 

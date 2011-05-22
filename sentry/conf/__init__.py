@@ -74,7 +74,7 @@ class SentryConfig(object):
     MAX_LENGTH_LIST = 50
     MAX_LENGTH_STRING = 200
 
-    VIEWS = {
+    SLICES = {
         'everything': {
             'name': 'Everything',
         },
