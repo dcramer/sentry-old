@@ -18,15 +18,17 @@ from sentry.web.templatetags import with_priority
 uuid_re = re.compile(r'^[a-z0-9]{32}$')
 
 def login_required(func):
-    def wrapped(request, *args, **kwargs):
-        if not app.config['PUBLIC']:
-            if not request.user.is_authenticated():
-                return redirect(url_for('login'))
-            if not request.user.has_perm('sentry.can_view'):
-                return redirect(url_for('login'))
+    def wrapped(*args, **kwargs):
+        # TODO: auth
+        # if not app.config['PUBLIC']:
+        #     if not request.user.is_authenticated():
+        #         return redirect(url_for('login'))
+        #     if not request.user.has_perm('sentry.can_view'):
+        #         return redirect(url_for('login'))
         return func(request, *args, **kwargs)
     wrapped.__doc__ = func.__doc__
     wrapped.__name__ = func.__name__
+    wrapped.__wraps__ = getattr(func, '__wraps__', func)
     return wrapped
 
 @app.route('/auth/login/')
@@ -84,6 +86,19 @@ def search(request):
 @login_required
 @app.route('/')
 def index():
+    if len(app.config['SLICES']) == 1:
+        return redirect('/view/%s/' % app.config['SLICES'].keys()[0])
+
+    # Render dashboard
+    return render_template('sentry/dashboard.html', {
+    
+    })
+
+@login_required
+@app.route('/show/<slug>/')
+def view_slice(slug):
+    slice_ = app.config['SLICES'][slug]
+    
     filters = []
     for filter_ in get_filters():
         filters.append(filter_(request))
@@ -96,6 +111,7 @@ def index():
     query = request.args.get('content')
     is_search = query
 
+    # TODO: this needs to pull in the event list for this slice
     event_list = Group.objects.all()
 
     sort = request.args.get('sort')
@@ -122,7 +138,8 @@ def index():
 
     has_realtime = page == 1
 
-    return render_template('sentry/index.html', **{
+    return render_template('sentry/slice.html', **{
+        'slice_name': slice_['name'],
         'has_realtime': has_realtime,
         'event_list': event_list,
         'today': today,
@@ -200,7 +217,7 @@ def ajax_handler():
     return Response(simplejson.dumps(data), mimetype='application/json')
 
 @login_required
-@app.route('/group/<group_id>')
+@app.route('/group/<group_id>/')
 def group_details(group_id):
     group = get_object_or_404(Group, pk=group_id)
     

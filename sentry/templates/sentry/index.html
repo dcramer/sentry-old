@@ -2,54 +2,99 @@
 
 {% block heading %}{{ gettext('Dashboard') }}{% endblock %}
 
-{% block sidebar %}
-    {% if chart_url %}
-        <h2>{{ gettext('Last 24 Hours') }}</h2>
-        <img src="{{ chart_url }}" class="chart" alt="chart"/>
-    {% endif %}
-
-    {% for filter in filters %}
-        <div class="sidebar-module sidebar-module-{{ filter.column }}">
-            {% if filter.show_label %}
-                <h2>{{ gettext(filter.label) }}</h2>
-            {% endif %}
-            <form method="get" action="{{ filter.get_query_string|safe }}">
-                {{ filter.render }}
-            </form>
+{% block content %}
+    <div id="body">
+        <div class="portlet">
+            <div class="portlet-title">Errors</div>
+            <div class="portlet-content">
+                <img src="http://cl.ly/2T3i2H3A1b473k0H1i3e/by_default_2011-05-16_at_6.34.08_PM.png" />
+                <ul class="events events-small" id="event_list">
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                </ul>
+            </div>
         </div>
-    {% endfor %}
-{% endblock %}
-
-{% block main %}
-    <div class="paging-wrap">
-        <div class="clearfix">
-            <form method="GET" action="">
-                {% for k, v in request.args.iteritems() %}
-                    <input type="hidden" name="{{ k }}" value="{{ v }}"/>
-                {% endfor %}
-                <div class="sort-by">{{ gettext('Sort by') }} <select name="sort" onchange="this.form.submit()">
-                    <option value=""{% if sort == 'priority' %} selected="selected"{% endif %}>{{ gettext('Priority') }}</option>
-                    <option value="date"{% if sort == 'date' %} selected="selected"{% endif %}>{{ gettext('Last Seen') }}</option>
-                    <option value="new"{% if sort == 'new' %} selected="selected"{% endif %}>{{ gettext('First Seen') }}</option>
-                    <option value="count"{% if sort == 'count' %} selected="selected"{% endif %}>{{ gettext('Count') }}</option>
-                </select>
-                </div>
-            </form>
-            {% if has_realtime %}
-                <a id="sentry_realtime" class="realtime realtime-pause">Pause Feed</a>
-            {% endif %}
+        <div class="portlet">
+            <div class="portlet-title">Errors</div>
+            <div class="portlet-content">
+                <img src="http://cl.ly/2T3i2H3A1b473k0H1i3e/by_default_2011-05-16_at_6.34.08_PM.png" />
+                <ul class="events events-small" id="event_list">
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="portlet">
+            <div class="portlet-title">Errors</div>
+            <div class="portlet-content">
+                <img src="http://cl.ly/2T3i2H3A1b473k0H1i3e/by_default_2011-05-16_at_6.34.08_PM.png" />
+                <ul class="events events-small" id="event_list">
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="portlet">
+            <div class="portlet-title">Errors</div>
+            <div class="portlet-content">
+                <img src="http://cl.ly/2T3i2H3A1b473k0H1i3e/by_default_2011-05-16_at_6.34.08_PM.png" />
+                <ul class="events events-small" id="event_list">
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                    <li class="level- priority-verylow" id="group_48d03e010bf241f2b9b4fda4ccc68180" data-sentry-count="">
+                        <span class="count count-digits-0">1</span>
+                        <h3><a href="/group/48d03e010bf241f2b9b4fda4ccc68180">TypeError: login() takes exactly 1 argument (0 given)</a></h3>
+                        <a href="/group/48d03e010bf241f2b9b4fda4ccc68180" class="row_link"></a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
-    
-    {% if event_list %}
-        <ul class="events" id="event_list">
-            {% for group, priority in event_list|with_priority %}
-                {% include "sentry/partial/group.html" %}
-            {% endfor %}
-        </ul>
-    {% else %}
-        <ul class="events" id="event_list">
-            <li class="no-events" id="no_events">{{ gettext('No events match your filters.') }}</li>
-        </ul>
-    {% endif %}
 {% endblock %}
