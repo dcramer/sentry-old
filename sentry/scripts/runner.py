@@ -114,29 +114,24 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.config:
-        os.environ['DJANGO_SETTINGS_MODULE'] = options.config
-
-    # TODO: we should attempt to discover settings modules
-
-    # if not django_settings.configured:
-    #     os.environ['DJANGO_SETTINGS_MODULE'] = 'sentry.conf.server'
+        app.config.from_object(options.config)
 
     if args[0] == 'upgrade':
         upgrade()
 
     elif args[0] == 'start':
-        app = SentryServer(host=options.host, port=options.port,
+        web = SentryServer(host=options.host, port=options.port,
                            pidfile=options.pidfile, logfile=options.logfile,
                            daemonize=options.daemonize, debug=options.debug)
-        app.execute(args[0])
+        web.execute(args[0])
 
     elif args[0] == 'restart':
-        app = SentryServer()
-        app.execute(args[0])
+        web = SentryServer()
+        web.execute(args[0])
   
     elif args[0] == 'stop':
-        app = SentryServer(pidfile=options.pidfile, logfile=options.logfile)
-        app.execute(args[0])
+        web = SentryServer(pidfile=options.pidfile, logfile=options.logfile)
+        web.execute(args[0])
 
     elif args[0] == 'cleanup':
         cleanup(days=options.days, tags=options.tags)
