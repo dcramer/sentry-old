@@ -100,7 +100,7 @@ def view_slice(slug):
     slice_ = app.config['SLICES'][slug]
     
     filters = []
-    for filter_ in get_filters():
+    for filter_ in get_filters(slice_):
         filters.append(filter_(request))
 
     try:

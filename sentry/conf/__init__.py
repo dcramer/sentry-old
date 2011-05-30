@@ -17,14 +17,6 @@ class SentryConfig(object):
     THRASHING_TIMEOUT = 60
     THRASHING_LIMIT = 10
 
-    FILTERS = (
-        'sentry.filters.StatusFilter',
-        'sentry.filters.LoggerFilter',
-        'sentry.filters.LevelFilter',
-        'sentry.filters.ServerNameFilter',
-        'sentry.filters.SiteFilter',
-    )
-
     # Sentry allows you to specify an alternative search backend for itself
     SEARCH_ENGINE = None
     SEARCH_OPTIONS = {}
@@ -81,14 +73,28 @@ class SentryConfig(object):
         # 'errors': {
         #     'name': 'Exceptions',
         #     'events': ['sentry.events.Exception'],
+        #     'filters': [
+        #         ('server', 'sentry.web.filters.Choice'),
+        #         ('level', 'sentry.web.filters.Choice'),
+        #         ('logger', 'sentry.web.filters.Choice'),
+        #     ],
         # },
         # 'events': {
         #     'name': 'Messages',
         #     'events': ['sentry.events.Message'],
+        #     'filters': [
+        #         ('server', 'sentry.web.filters.Choice'),
+        #         ('level', 'sentry.web.filters.Choice'),
+        #         ('logger', 'sentry.web.filters.Choice'),
+        #     ],
         # },
         # 'sql': {
         #     'name': 'SQL',
         #     'events': ['sentry.events.Query'],
+        #     'filters': [
+        #         ('server', 'sentry.web.filters.Choice'),
+        #         ('duration', 'sentry.web.filters.Duration'),
+        #     ],
         # },
     }
     

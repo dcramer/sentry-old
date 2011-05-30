@@ -9,12 +9,11 @@ from types import ClassType, TypeType
 import sentry
 from sentry.utils.encoding import force_unicode
 
-_FILTER_CACHE = None
-def get_filters():
+_FILTER_CACHE = {}
+def get_filters(slice_):
     global _FILTER_CACHE
 
-    if _FILTER_CACHE is None:
-        
+    if slice_ not in _FILTER_CACHE:
         filters = []
         for filter_ in sentry.app.config['FILTERS']:
             if filter_.endswith('sentry.filters.SearchFilter'):
@@ -28,8 +27,9 @@ def get_filters():
                 logger.exception('Unable to import %s' % (filter_,))
                 continue
             filters.append(filter_)
-        _FILTER_CACHE = filters
-    for f in _FILTER_CACHE:
+        _FILTER_CACHE[slice_] = filters
+
+    for f in _FILTER_CACHE[slice_]:
         yield f
 
 def construct_checksum(level=logging.ERROR, class_name='', traceback='', message='', **kwargs):
