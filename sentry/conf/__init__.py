@@ -39,8 +39,8 @@ class SentryConfig(object):
         (logging.FATAL, 'fatal'),
     )
 
-    # This should be the full URL to sentries store view
-    REMOTE_URL = None
+    # This should a list of the full URI to the storage API endpionts.
+    REMOTES = []
 
     REMOTE_TIMEOUT = 5
 
