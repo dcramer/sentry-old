@@ -8,7 +8,7 @@ import zlib
 
 from sentry import app
 from sentry.utils import is_float
-from sentry.utils.api import get_signature, parse_auth_header
+from sentry.utils.api import get_mac_signature, parse_auth_header
 from sentry.utils.compat import pickle
 
 from flask import request, abort
@@ -35,7 +35,7 @@ def store():
             if timestamp < time.time() - 3600: # 1 hour
                 abort(410, 'Message has expired')
 
-            sig_hmac = get_signature(data, timestamp)
+            sig_hmac = get_mac_signature(app.config['KEY'], data)
             if sig_hmac != signature:
                 abort(403, 'Invalid signature')
         else:

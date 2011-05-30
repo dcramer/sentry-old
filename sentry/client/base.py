@@ -13,7 +13,7 @@ from sentry import app
 
 import sentry
 from sentry.utils import get_versions, transform
-from sentry.utils.api import get_signature, get_auth_header
+from sentry.utils.api import get_mac_signature, get_auth_header
 from sentry.models import TagCount, Tag, Group, Event
 
 class SentryClient(object):
@@ -197,7 +197,7 @@ class SentryClient(object):
             for url in app.config['REMOTE_URL']:
                 message = base64.b64encode(simplejson.dumps(kwargs).encode('zlib'))
                 timestamp = time.time()
-                signature = get_signature(message, timestamp)
+                signature = get_mac_signature(message, timestamp)
                 headers={
                     'Authorization': get_auth_header(signature, timestamp, '%s/%s' % (self.__class__.__name__, sentry.VERSION)),
                     'Content-Type': 'application/octet-stream',
