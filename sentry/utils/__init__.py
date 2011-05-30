@@ -7,15 +7,18 @@ from pprint import pformat
 from types import ClassType, TypeType
 
 import sentry
+from sentry import app
 from sentry.utils.encoding import force_unicode
 
 _FILTER_CACHE = {}
-def get_filters(slice_):
+def get_filters(slug):
     global _FILTER_CACHE
 
-    if slice_ not in _FILTER_CACHE:
+    if slug not in _FILTER_CACHE:
+        slice_ = app.config['SLICES'][slug]
+        
         filters = []
-        for filter_ in sentry.app.config['FILTERS']:
+        for filter_ in slice_.get('FILTERS', []):
             if filter_.endswith('sentry.filters.SearchFilter'):
                 continue
             module_name, class_name = filter_.rsplit('.', 1)
@@ -27,9 +30,10 @@ def get_filters(slice_):
                 logger.exception('Unable to import %s' % (filter_,))
                 continue
             filters.append(filter_)
-        _FILTER_CACHE[slice_] = filters
 
-    for f in _FILTER_CACHE[slice_]:
+        _FILTER_CACHE[slug] = filters
+
+    for f in _FILTER_CACHE[slug]:
         yield f
 
 def construct_checksum(level=logging.ERROR, class_name='', traceback='', message='', **kwargs):
