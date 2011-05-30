@@ -104,3 +104,8 @@ This is a rough list of features/APIs which need to be completed (this is better
 * Django Integration (some draft code is present)
 * SQLAlchemy Backend
 * Full test coverage should exist for Models and Backends
+* Deal with expiration (since we use sorted sets in Redis, we cant just expires on keys)
+* Create a background process which gets launched in addition to the web process
+  * Should handle tasks like "expire message"
+  * Could handle all API requests?
+  
