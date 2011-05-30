@@ -193,8 +193,8 @@ class SentryClient(object):
 
     def send(self, **kwargs):
         "Sends the message to the server."
-        if app.config['REMOTE_URL']:
-            for url in app.config['REMOTE_URL']:
+        if app.config['REMOTES']:
+            for url in app.config['REMOTES']:
                 message = base64.b64encode(simplejson.dumps(kwargs).encode('zlib'))
                 timestamp = time.time()
                 signature = get_mac_signature(message, timestamp)

@@ -181,11 +181,11 @@ Start with adding the client to your ``INSTALLED_APPS``::
 	  'sentry.client',
 	]
 
-Add the ``SENTRY_REMOTE_URL`` configuration variable, to point to the absolute location to the ``/store/`` view on your
+Add the ``SENTRY_REMOTES`` configuration variable, to point to the absolute location to the ``/store/`` view on your
 Sentry server::
 
 	# This should be the absolute URI of sentries store view
-	SENTRY_REMOTE_URL = 'http://your.sentry.server/sentry/store/'
+	SENTRY_REMOTES = ['http://your.sentry.server/sentry/store/']
 
 You will also need to ensure that your ``SENTRY_KEY`` matches across your client and server configurations::
 

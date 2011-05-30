@@ -155,7 +155,7 @@ this, Sentry allows you to specify a custom client::
 
 	CLIENT = 'sentry.client.base.SentryClient'
 
-In addition to the default client (which will handle multi-db and REMOTE_URL for you) we also include two additional options:
+In addition to the default client (which will handle REMOTES for you) we also include two additional options:
 
 *******************
 LoggingSentryClient
