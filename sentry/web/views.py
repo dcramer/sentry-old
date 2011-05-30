@@ -87,7 +87,7 @@ def search(request):
 @app.route('/')
 def index():
     if len(app.config['SLICES']) == 1:
-        return redirect('/view/%s/' % app.config['SLICES'].keys()[0])
+        return redirect(url_for('view_slice', slug=app.config['SLICES'].keys()[0]))
 
     # Render dashboard
     return render_template('sentry/dashboard.html', {
