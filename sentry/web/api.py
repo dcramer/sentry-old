@@ -17,10 +17,13 @@ def store():
     
     auth_vars = parse_auth_header(request.META['AUTHORIZATION'])
     
-    signature = auth_vars.get('sentry_signature')
-    timestamp = auth_vars.get('sentry_timestamp')
+    signature = auth_vars.get('signature')
+    timestamp = auth_vars.get('timestamp')
+    nonce = auth_vars.get('nonce')
 
     data = request.data
+
+    # TODO: check nonce
 
     # Signed data packet
     if signature and timestamp:
@@ -32,7 +35,7 @@ def store():
         if timestamp < time.time() - 3600: # 1 hour
             abort(410, 'Message has expired')
 
-        if signature != get_mac_signature(app.config['KEY'], data):
+        if signature != get_mac_signature(app.config['KEY'], data, timestamp, nonce):
             abort(403, 'Invalid signature')
     else:
         abort(401,'Unauthorized')

@@ -197,7 +197,8 @@ class SentryClient(object):
             for url in app.config['REMOTES']:
                 message = base64.b64encode(simplejson.dumps(kwargs).encode('zlib'))
                 timestamp = time.time()
-                signature = get_mac_signature(message, timestamp)
+                nonce = uuid.uuid4().hex
+                signature = get_mac_signature(app.config['KEY'], message, nonce, timestamp)
                 headers={
                     'Authorization': get_auth_header(signature, timestamp, '%s/%s' % (self.__class__.__name__, sentry.VERSION)),
                     'Content-Type': 'application/octet-stream',
