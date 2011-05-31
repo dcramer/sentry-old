@@ -94,10 +94,7 @@ The other major change, is that labels like "logger", and "server" are now part 
 Filter API
 ----------
 
-The filter API is designed to allow dynamic filters based on tags, with a few possible hooks:
-
-* Post-processing of a message (e.g. add additional tags, save new indexes, etc.)
-* Rendering a widget in the slice grid pane for filtering events.
+The filter API is designed to allow dynamic filters based on tags. They are composed of two pieces: a processor and a renderer. The renderer simply tells Sentry how it needs to be displayed in the filter list (e.g. a select widget with FOO choices, a search input, etc). 
 
 The majority of this code lies within ``sentry.web.filters``, and are specified as part of the ``SLICES`` runtime configuration.
 
