@@ -9,6 +9,12 @@ def all():
     for k, v in app.config['SLICES'].iteritems():
         yield Slice(slug=k, **v)
 
+def get(slug):
+    """
+    Returns a slice by it's slug.
+    """
+    yield Slice(slug=slug, **app.config['SLICES'][slug])
+
 class Slice(object):
     """
     #     'name': 'Exceptions',

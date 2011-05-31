@@ -9,11 +9,12 @@ from flask import render_template, redirect, request, url_for, \
                   abort, Response
 
 from sentry import app
-from sentry.utils import get_filters
-from sentry.utils.shortcuts import get_object_or_404
+from sentry.core import slices
 from sentry.models import Group, Event
 from sentry.plugins import GroupActionProvider
 from sentry.web.templatetags import with_priority
+from sentry.utils import get_filters
+from sentry.utils.shortcuts import get_object_or_404
 
 uuid_re = re.compile(r'^[a-z0-9]{32}$')
 
@@ -86,18 +87,20 @@ def search(request):
 @login_required
 @app.route('/')
 def index():
-    if len(app.config['SLICES']) == 1:
-        return redirect(url_for('view_slice', slug=app.config['SLICES'].keys()[0]))
+    all_slices = list(slices.all())
+
+    if len(all_slices) == 1:
+        return redirect(url_for('view_slice', slug=all_slices[0].slug))
 
     # Render dashboard
     return render_template('sentry/dashboard.html', {
-    
+        'slices': all_slices,
     })
 
 @login_required
 @app.route('/show/<slug>/')
 def view_slice(slug):
-    slice_ = app.config['SLICES'][slug]
+    slice_ = slices.get(slug)
     
     filters = []
     for filter_ in get_filters(slug):

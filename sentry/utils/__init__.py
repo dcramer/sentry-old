@@ -8,6 +8,7 @@ from types import ClassType, TypeType
 
 import sentry
 from sentry import app
+from sentry.core import slices
 from sentry.utils.encoding import force_unicode
 
 _FILTER_CACHE = {}
@@ -15,7 +16,7 @@ def get_filters(slug):
     global _FILTER_CACHE
 
     if slug not in _FILTER_CACHE:
-        slice_ = app.config['SLICES'][slug]
+        slice_ = slices.get(slug)
         
         filters = []
         for filter_ in slice_.get('FILTERS', []):
