@@ -55,13 +55,12 @@ Client API
 ----------
 
 The client is the core of Sentry, which is composed of the ``sentry`` namespace, and its many
-submodules. There are a few key things that make up the client:
+submodules. There are a two key things that make up the client:
 
 * ``sentry.client``
 * ``sentry.events``
-* ``sentry.filters``
 
-Most of these components are also used within ``sentry.web`` as well.
+These components are also used within ``sentry.web`` as well.
 
 To capture an error, Sentry provides the ``capture`` function:
 
@@ -90,6 +89,17 @@ The other major change, is that labels like "logger", and "server" are now part 
 
     from sentry import capture
     capture('Message', message='hello world', tags=[('logger', 'root'), ('level', 'error'), ('url', 'http://example.com')])
+
+----------
+Filter API
+----------
+
+The filter API is designed to allow dynamic filters based on tags, with a few possible hooks:
+
+* Post-processing of a message (e.g. add additional tags, save new indexes, etc.)
+* Rendering a widget in the slice grid pane for filtering events.
+
+The majority of this code lies within ``sentry.web.filters``, and are specified as part of the ``SLICES`` runtime configuration.
 
 ------------
 What's Left?
