@@ -90,7 +90,7 @@ class Exception(BaseEvent):
             view = best_guess
 
         if view:
-            tags.append(('view', view))
+            tags.append(('call', view))
         
 
         if hasattr(exc_type, '__class__'):

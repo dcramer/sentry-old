@@ -58,9 +58,9 @@ class SentryClient(object):
         data['__sentry__']['versions'] = versions
 
         # TODO: view should probably be passable via kwargs
-        if data['__sentry__'].get('view'):
+        if data['__sentry__'].get('call'):
             # get list of modules from right to left
-            parts = data['__sentry__']['view'].split('.')
+            parts = data['__sentry__']['call'].split('.')
             module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
             version = None
             module = None
@@ -142,32 +142,38 @@ class SentryClient(object):
         groups = []
 
         # For each view that handles this event, we need to create a Group
-        for view in app.config['SLICES'].itervalues():
-            if event_type in view.get('events', [event_type]):
-                # We only care about tags which are required for this view
+        for slug, slice_ in app.config['SLICES'].iteritems():
+            if event_type in slice_.get('events', [event_type]):
+                # # We only care about tags which are required for this view
+                # event_tags = [(k, v) for k, v in tags if k in view.get('tags', [])]
+                # tags_hash = TagCount.get_tags_hash(event_tags)
+                # 
+                # # Handle TagCount creation and incrementing
+                # tc, created = TagCount.objects.get_or_create(
+                #     hash=tags_hash,
+                #     defaults={
+                #         'tags': event_tags,
+                #         'count': 1,
+                #     }
+                # )
+                # if not created:
+                #     tc.incr('count')
 
-                event_tags = [(k, v) for k, v in tags if k in view.get('tags', [])]
-                tags_hash = TagCount.get_tags_hash(event_tags)
-
-                # Handle TagCount creation and incrementing
-                tc, created = TagCount.objects.get_or_create(
-                    hash=tags_hash,
-                    defaults={
-                        'tags': event_tags,
-                        'count': 1,
-                    }
-                )
-                if not created:
-                    tc.incr('count')
+                group_message = event_message
+                # if not view.get('labelby'):
+                #     group_message = event_message
+                # else:
+                #     # TODO:
+                slice_hash = hashlib.md5(slug).hexdigest()
 
                 group, created = Group.objects.get_or_create(
                     type=event_type,
-                    hash=tags_hash + event_hash,
+                    hash=slice_hash + event_hash,
                     defaults={
                         'count': 1,
                         'time_spent': time_spent or 0,
                         'tags': tags,
-                        'message': event_message,
+                        'message': group_message,
                     }
                 )
                 if not created:

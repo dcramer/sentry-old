@@ -78,6 +78,8 @@ class SentryConfig(object):
         #         ('level', 'sentry.web.filters.Choice'),
         #         ('logger', 'sentry.web.filters.Choice'),
         #     ],
+        #     # override the default label 
+        #     'labelby': 'url',
         # },
         # 'events': {
         #     'name': 'Messages',
