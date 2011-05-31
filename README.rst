@@ -97,9 +97,11 @@ What's Left?
 
 This is a rough list of features/APIs which need to be completed (this is better described in the issue tracker):
 
+* Runtime validation of settings (ensure events and filters are valid importables, etc.)
 * Filter API
 * Plugin API
 * Custom Views (still using the old "render everything" logic from Sentry 1.x)
+  * Partially done -- we need to deal with non-magical indexes (e.g. explicit, only index this)
 * Dashboard View
 * Django Integration (some draft code is present)
 * SQLAlchemy Backend
