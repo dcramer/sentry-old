@@ -17,7 +17,7 @@ class SentryTest(BaseTest):
             'sentry.events.Message',
             tags=(
                 ('server', 'foo.bar'),
-                ('call', 'foo.bar.zoo.baz'),
+                ('culprit', 'foo.bar.zoo.baz'),
             ),
             date=now,
             time_spent=53,
@@ -46,7 +46,7 @@ class SentryTest(BaseTest):
 
         tag = group.tags[1]
 
-        self.assertEquals(tag[0], 'call')
+        self.assertEquals(tag[0], 'culprit')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         events = group.get_relations(Event)
@@ -67,7 +67,7 @@ class SentryTest(BaseTest):
 
         tag = event.tags[1]
 
-        self.assertEquals(tag[0], 'call')
+        self.assertEquals(tag[0], 'culprit')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         event, groups = app.client.store(
@@ -101,7 +101,7 @@ class SentryTest(BaseTest):
 
         tag = group.tags[1]
 
-        self.assertEquals(tag[0], 'call')
+        self.assertEquals(tag[0], 'culprit')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
         events = group.get_relations(Event, desc=False)
@@ -132,7 +132,7 @@ class SentryTest(BaseTest):
 
         tag = tags[1]
 
-        self.assertEquals(tag.key, 'call')
+        self.assertEquals(tag.key, 'culprit')
         self.assertEquals(tag.value, 'foo.bar.zoo.baz')
         self.assertEquals(tag.count, 1)
 

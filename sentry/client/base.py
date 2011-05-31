@@ -12,6 +12,7 @@ import urllib2
 from sentry import app
 
 import sentry
+from sentry.core import slices
 from sentry.utils import get_versions, transform
 from sentry.utils.api import get_mac_signature, get_auth_header
 from sentry.models import TagCount, Tag, Group, Event
@@ -58,9 +59,9 @@ class SentryClient(object):
         data['__sentry__']['versions'] = versions
 
         # TODO: view should probably be passable via kwargs
-        if data['__sentry__'].get('call'):
+        if data['__sentry__'].get('culprit'):
             # get list of modules from right to left
-            parts = data['__sentry__']['call'].split('.')
+            parts = data['__sentry__']['culprit'].split('.')
             module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
             version = None
             module = None
@@ -142,8 +143,8 @@ class SentryClient(object):
         groups = []
 
         # For each view that handles this event, we need to create a Group
-        for slug, slice_ in app.config['SLICES'].iteritems():
-            if event_type in slice_.get('events', [event_type]):
+        for slice_ in slices.all():
+            if slice_.is_valid_event(event_type):
                 # # We only care about tags which are required for this view
                 # event_tags = [(k, v) for k, v in tags if k in view.get('tags', [])]
                 # tags_hash = TagCount.get_tags_hash(event_tags)
@@ -164,11 +165,9 @@ class SentryClient(object):
                 #     group_message = event_message
                 # else:
                 #     # TODO:
-                slice_hash = hashlib.md5(slug).hexdigest()
-
                 group, created = Group.objects.get_or_create(
                     type=event_type,
-                    hash=slice_hash + event_hash,
+                    hash=slice_.id + event_hash,
                     defaults={
                         'count': 1,
                         'time_spent': time_spent or 0,
