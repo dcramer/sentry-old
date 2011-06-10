@@ -24,6 +24,7 @@ setup(
     install_requires=[
         'Flask',
         'Flask-Babel',
+        'redis',
         # python-daemon and eventlet are required to run the Sentry indepenent webserver
         'python-daemon>=1.6',
         'eventlet>=0.9.15',
