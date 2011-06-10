@@ -1,5 +1,6 @@
 # Based on http://martyalchin.com/2008/jan/10/simple-plugin-framework/
-from django.core.urlresolvers import reverse
+
+from flask import url_for
 
 class PluginMount(type):
     def __init__(cls, name, bases, attrs):
@@ -16,33 +17,33 @@ class PluginMount(type):
             cls.slug = getattr(cls, 'slug', None) or cls.title.replace(' ', '-').lower()
             cls.plugins[cls.slug] = cls
 
-class ActionProvider:
-    """
-    Base interface for adding action providers.
-
-    Plugins implementing this reference should provide the following attributes:
-
-    ========  ========================================================
-    title     The text to be displayed, describing the action
-
-    view      The view which will perform this action
-
-    selected  Boolean indicating whether the action is the one
-              currently being performed
-    
-    ========  ========================================================
-    """
-    __metaclass__ = PluginMount
-
-    def __init__(self):
-        self.url = reverse('sentry:plugin-action', args=(self.slug,))
-
-    def __call__(self, request):
-        self.selected = request.path == self.url
-        if not self.selected:
-            return
-
-        return self.perform(request)
+# class ActionProvider:
+#     """
+#     Base interface for adding action providers.
+# 
+#     Plugins implementing this reference should provide the following attributes:
+# 
+#     ========  ========================================================
+#     title     The text to be displayed, describing the action
+# 
+#     view      The view which will perform this action
+# 
+#     selected  Boolean indicating whether the action is the one
+#               currently being performed
+#     
+#     ========  ========================================================
+#     """
+#     __metaclass__ = PluginMount
+# 
+#     def __init__(self):
+#         self.url = url_for('group_plugin_action', slug=cls.slug)
+# 
+#     def __call__(self, request):
+#         self.selected = request.path == self.url
+#         if not self.selected:
+#             return
+# 
+#         return self.perform(request)
 
 class GroupActionProvider:
     # TODO: should be able to specify modal support
@@ -53,7 +54,7 @@ class GroupActionProvider:
 
     @classmethod
     def get_url(cls, group_id):
-        return reverse('sentry:group-plugin-action', args=(group_id, cls.slug))
+        return url_for('group_plugin_action', group_id=group_id, slug=cls.slug)
 
     def __init__(self, group_id):
         self.url = self.__class__.get_url(group_id)
