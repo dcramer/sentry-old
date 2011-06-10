@@ -1,6 +1,6 @@
 from flaskext.babel import ngettext, gettext
 from sentry import app
-from sentry.plugins import GroupActionProvider
+#from sentry.plugins import GroupActionProvider
 
 import datetime
 import simplejson
@@ -86,29 +86,44 @@ def sentry_version():
 
 @app.template_filter()
 def get_actions(group):
-    action_list = []
-    for cls in GroupActionProvider.plugins.itervalues():
-        inst = cls(group.pk)
-        action_list = inst.actions(request, action_list, group)
-    for action in action_list:
-        yield action[0], action[1], request.path == action[1]
+    # TODO:
+    return []
 
 @app.template_filter()
 def get_panels(group):
-    panel_list = []
-    for cls in GroupActionProvider.plugins.itervalues():
-        inst = cls(group.pk)
-        panel_list = inst.panels(request, panel_list, group)
-    for panel in panel_list:
-        yield panel[0], panel[1], request.path == panel[1]
+    # TODO:
+    return []
 
 @app.template_filter()
 def get_widgets(group):
-    for cls in GroupActionProvider.plugins.itervalues():
-        inst = cls(group.pk)
-        resp = inst.widget(request, group)
-        if resp:
-            yield resp
+    # TODO:
+    return []
+
+# @app.template_filter()
+# def get_actions(group):
+#     action_list = []
+#     for cls in GroupActionProvider.plugins.itervalues():
+#         inst = cls(group.pk)
+#         action_list = inst.actions(request, action_list, group)
+#     for action in action_list:
+#         yield action[0], action[1], request.path == action[1]
+# 
+# @app.template_filter()
+# def get_panels(group):
+#     panel_list = []
+#     for cls in GroupActionProvider.plugins.itervalues():
+#         inst = cls(group.pk)
+#         panel_list = inst.panels(request, panel_list, group)
+#     for panel in panel_list:
+#         yield panel[0], panel[1], request.path == panel[1]
+# 
+# @app.template_filter()
+# def get_widgets(group):
+#     for cls in GroupActionProvider.plugins.itervalues():
+#         inst = cls(group.pk)
+#         resp = inst.widget(request, group)
+#         if resp:
+#             yield resp
 
 @app.template_filter()
 def timesince(d, now=None):
