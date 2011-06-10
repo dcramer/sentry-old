@@ -34,7 +34,7 @@ setup(
     ],
     tests_require=tests_require,
     extras_require={'test': tests_require},
-    test_suite='nose.main',
+    test_suite='nose.collector',
     include_package_data=True,
     entry_points = {
         'console_scripts': [
