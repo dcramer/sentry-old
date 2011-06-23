@@ -15,11 +15,18 @@ import sentry
 from sentry.core import slices
 from sentry.utils import get_versions, transform
 from sentry.utils.api import get_mac_signature, get_auth_header
-from sentry.models import TagCount, Tag, Group, Event
+from sentry.models import Tag, Group, Event
+
+class EventProxyCache(dict):
+    def __missing__(self, key):
+        module, class_name = key.rsplit('.', 1)
+
+        return getattr(__import__(module, {}, {}, [class_name], -1), class_name)
 
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('sentry.errors')
+        self.event_cache = EventProxyCache()
 
     def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None, **kwargs):
         "Captures and processes an event and pipes it off to SentryClient.send."
@@ -30,9 +37,7 @@ class SentryClient(object):
             # Assume it's a builtin
             event_type = 'sentry.events.%s' % event_type
 
-        module, class_name = event_type.rsplit('.', 1)
-
-        handler = getattr(__import__(module, {}, {}, [class_name], -1), class_name)()
+        handler = self.event_cache[event_type]()
 
         result = handler.capture(**kwargs)
 
