@@ -65,7 +65,9 @@ def search(request):
         elif not has_search:
             return render_template('sentry/invalid_message_id.html')
         else:
-            event_list = get_search_query_set(query)
+            # TODO:
+            # event_list = get_search_query_set(query)
+            raise NotImplementedError
     else:
         event_list = Group.objects.none()
     
@@ -82,6 +84,7 @@ def search(request):
         'query': query,
         'sort': sort,
         'request': request,
+        'page': page,
     })
 
 @login_required
@@ -110,9 +113,6 @@ def view_slice(slug):
         page = int(request.args.get('p', 1))
     except (TypeError, ValueError):
         page = 1
-
-    query = request.args.get('content')
-    is_search = query
 
     # TODO: this needs to pull in the event list for this slice
     event_list = Group.objects.all()
@@ -146,7 +146,6 @@ def view_slice(slug):
         'has_realtime': has_realtime,
         'event_list': event_list,
         'today': today,
-        'query': query,
         'sort': sort,
         'any_filter': any_filter,
         'request': request,
@@ -249,8 +248,6 @@ def group_event_list(group_id):
     group = get_object_or_404(Group, pk=group_id)
 
     event_list = group.get_relations(Event)
-
-    page = 'events'
 
     return render_template('sentry/group/event_list.html', **{
         'page': 'events',
