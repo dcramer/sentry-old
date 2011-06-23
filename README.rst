@@ -119,3 +119,5 @@ This is a rough list of features/APIs which need to be completed (this is better
   * Could handle all API requests?
 * Decide on final version of client authentication API
   * Probably don't need it to be so secure (nonce is extra load)
+  * Support should be considered for having multiple "users". A good example use case is if a consulting firm uses a single
+    Sentry server and has many clients, but then decides one client's access needs revoked from recording to the logger.
