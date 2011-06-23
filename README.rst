@@ -117,4 +117,5 @@ This is a rough list of features/APIs which need to be completed (this is better
 * Create a background process which gets launched in addition to the web process
   * Should handle tasks like "expire message"
   * Could handle all API requests?
-  
+* Decide on final version of client authentication API
+  * Probably don't need it to be so secure (nonce is extra load)
