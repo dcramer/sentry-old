@@ -59,7 +59,7 @@ class QuerySet(object):
         if stop == -1:
             num = stop
         else:
-            num = start - stop
+            num = stop - start
         
         if self.index.startswith('-'):
             desc = True
@@ -167,7 +167,11 @@ class Options(object):
         self.ordering = default_order or 'default'
 
         self.sortables = list(meta.__dict__.get('sortables', []))
+
         self.indexes = list(meta.__dict__.get('indexes', []))
+
+        if self.ordering != 'default':
+            self.sortables.append(self.ordering)
 
         # If we've specified ordering, and ordering is not already defined
         # as a sort index, we must register it
