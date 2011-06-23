@@ -13,7 +13,7 @@ def get(slug):
     """
     Returns a slice by it's slug.
     """
-    yield Slice(slug=slug, **app.config['SLICES'][slug])
+    return Slice(slug=slug, **app.config['SLICES'][slug])
 
 class Slice(object):
     """

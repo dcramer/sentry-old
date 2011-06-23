@@ -142,7 +142,7 @@ def view_slice(slug):
     has_realtime = page == 1
 
     return render_template('sentry/slice.html', **{
-        'slice_name': slice_['name'],
+        'slice_name': slice_.name,
         'has_realtime': has_realtime,
         'event_list': event_list,
         'today': today,

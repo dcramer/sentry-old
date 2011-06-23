@@ -19,7 +19,7 @@ def get_filters(slug):
         slice_ = slices.get(slug)
         
         filters = []
-        for filter_ in slice_.get('FILTERS', []):
+        for filter_ in slice_.filters:
             if filter_.endswith('sentry.filters.SearchFilter'):
                 continue
             module_name, class_name = filter_.rsplit('.', 1)
