@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+Sentry
+~~~~~~
+
+Sentry is a real-time logging platform.
+"""
 
 try:
     from setuptools import setup, find_packages
@@ -19,8 +25,10 @@ setup(
     author_email='dcramer@gmail.com',
     url='http://github.com/dcramer/django-sentry',
     description = 'Exception Logging to a Database in Django',
+    long_description=__doc__,
     packages=find_packages(exclude="example_project"),
     zip_safe=False,
+    license='BSD',
     install_requires=[
         'Flask',
         'Flask-Babel',
