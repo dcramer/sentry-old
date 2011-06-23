@@ -17,6 +17,11 @@ class Cleaner(threading.Thread):
 
     def run(self):
         while True:
+            time.sleep(5)
+
+            if not app.config['TRUNCATE_AFTER']:
+                continue
+            
             cutoff = datetime.datetime.now() - app.config['TRUNCATE_AFTER']
             # XXX: this could be more efficient if we took interest in what
             # groups an event is part of, and checked them while iterating the events
@@ -33,5 +38,3 @@ class Cleaner(threading.Thread):
 
                 self.logger.debug('Cleaning up %r' % group)
                 group.delete()
-
-            time.sleep(5)

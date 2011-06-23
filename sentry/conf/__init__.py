@@ -105,6 +105,8 @@ class SentryConfig(object):
         'ENGINE': 'sentry.db.backends.redis.RedisBackend',
     }
     
+    # Controls how long entries should stay along before the
+    # cleaner removes them. Set to None to disable
     TRUNCATE_AFTER = datetime.timedelta(days=30)
 
     SERVER_EMAIL = None
