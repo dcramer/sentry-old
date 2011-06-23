@@ -2,6 +2,7 @@
 Represents the default values for all Sentry settings.
 """
 
+import datetime
 import logging
 import os
 import os.path
@@ -103,6 +104,8 @@ class SentryConfig(object):
     DATASTORE = {
         'ENGINE': 'sentry.db.backends.redis.RedisBackend',
     }
+    
+    TRUNCATE_AFTER = datetime.timedelta(days=30)
 
     SERVER_EMAIL = None
 

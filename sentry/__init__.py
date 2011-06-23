@@ -101,6 +101,7 @@ app = Flask(__name__)
 
 from flaskext.babel import Babel
 
+from sentry.core.cleaner import Cleaner
 from sentry.client import get_client
 from sentry.db import get_backend
 
@@ -116,6 +117,16 @@ app.client = get_client(app)
 
 # Flask-Babel (internationalization)
 app.babel = Babel(app)
+
+@app.before_request
+def init_threads():
+    """
+    Attaches threads to the process on the first web request if 
+    they're not already present.
+    """
+    if not hasattr(app, 'cleaner'):
+        app.cleaner = Cleaner(app)
+        app.cleaner.start()
 
 # Shortcuts to be exported for API
 capture = app.client.capture
