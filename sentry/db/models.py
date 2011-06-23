@@ -50,7 +50,7 @@ class QuerySet(object):
         is_slice = isinstance(key, slice)
         if is_slice:
             assert key.step == 1 or key.step is None
-            start = key.start
+            start = key.start or 0
             stop = key.stop
         else:
             start = key
@@ -307,6 +307,7 @@ class Model(object):
         # remove relation keys
         for name, field in self._meta.relations:
             app.db.remove_relation(model, self.pk)
+            # TODO: clean up remaining relation
 
         # remove instance
         app.db.delete(model, self.pk)
