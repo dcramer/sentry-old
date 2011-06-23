@@ -96,9 +96,6 @@ class RedisBackend(SentryBackend):
 
     def add_to_index(self, schema, pk, index, score):
         # adds an instance to a sorted index
-        # TODO: this has to deal w/ partitioning the data otherwise the zset is too big
-        #       to do this we parition the index by day and paginate through days until we get the
-        #        number of results that we want.
         if isinstance(score, datetime.datetime):
             score = score.strftime('%s.%m')
         self.conn.zadd(self._get_index_key(schema, index), pk, float(score))
