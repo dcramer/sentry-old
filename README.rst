@@ -109,6 +109,7 @@ This is a rough list of features/APIs which need to be completed (this is better
 * Plugin API
 * Custom Views (still using the old "render everything" logic from Sentry 1.x)
   * Partially done -- we need to deal with non-magical indexes (e.g. explicit, only index this)
+  * Should consider supporting better interval dashboards. e.g. last 24 hours, vs last 15 minutes
 * Dashboard View
 * Django Integration (some draft code is present)
 * SQLAlchemy Backend
