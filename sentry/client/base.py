@@ -21,7 +21,11 @@ class EventProxyCache(dict):
     def __missing__(self, key):
         module, class_name = key.rsplit('.', 1)
 
-        return getattr(__import__(module, {}, {}, [class_name], -1), class_name)
+        handler = getattr(__import__(module, {}, {}, [class_name], -1), class_name)
+        
+        self[key] = handler
+        
+        return handler
 
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
