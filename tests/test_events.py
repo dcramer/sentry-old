@@ -117,11 +117,60 @@ class SentryTest(BaseTest):
 
         self.assertEquals(len(tags), 2, tags)
 
+        groups = Group.objects.all()
+
+        self.assertEquals(len(groups), 1)
+
+        event, group = app.client.store(
+            'sentry.events.Message',
+            tags=(
+                ('server', 'foo.bar'),
+            ),
+            date=now + datetime.timedelta(seconds=1),
+            time_spent=100,
+            data={
+                '__event__': {
+                    'message': 'hello world 2',
+                },
+            },
+            event_id='foobar2',
+        )
+
+        self.assertNotEquals(group.pk, group_id)
+        self.assertEquals(group.count, 1)
+        self.assertEquals(group.time_spent, 100)
+        self.assertEquals(len(group.tags), 1)
+
+        tag = group.tags[0]
+
+        self.assertEquals(tag[0], 'server')
+        self.assertEquals(tag[1], 'foo.bar')
+
+        events = group.get_relations(Event, desc=False)
+
+        self.assertEquals(len(events), 1)
+
+        event = events[0]
+
+        self.assertEquals(event.time_spent, 100)
+        self.assertEquals(event.type, group.type)
+        self.assertEquals(group.last_seen, event.date)
+        self.assertEquals(len(event.tags), 1)
+
+        tag = event.tags[0]
+
+        self.assertEquals(tag[0], 'server')
+        self.assertEquals(tag[1], 'foo.bar')
+
+        tags = Tag.objects.order_by('-count')
+
+        self.assertEquals(len(tags), 2, tags)
+
         tag = tags[0]
 
         self.assertEquals(tag.key, 'server')
         self.assertEquals(tag.value, 'foo.bar')
-        self.assertEquals(tag.count, 1)
+        self.assertEquals(tag.count, 2)
 
         tag = tags[1]
 
@@ -131,7 +180,7 @@ class SentryTest(BaseTest):
 
         groups = Group.objects.all()
 
-        self.assertEquals(len(groups), 1)
+        self.assertEquals(len(groups), 2)
 
     def test_message_event(self):
         event_id = capture('Message', message='foo')
