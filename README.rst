@@ -122,7 +122,9 @@ This is a rough list of features/APIs which need to be completed (this is better
 
 * SQLAlchemy Backend
 
-* Full test coverage should exist for Models and Backends
+* Test coverage
+
+  * Full test coverage should exist for Models and Backends
 
 * Decide on final version of client authentication API
 
