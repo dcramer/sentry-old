@@ -10,5 +10,5 @@ class SentryLogbookHandler(logbook.Handler):
         
         if record.exc_info:
             return capture('Exception', exc_info=record.exc_info, tags=tags)
-        return capture('Message', message=record.mesage, tags=tags)
+        return capture('Message', message=record.message, tags=tags)
 
