@@ -106,6 +106,8 @@ This is a rough list of features/APIs which need to be completed (*some* of this
 
 * Runtime validation of settings (ensure events and filters are valid importables, etc.)
 
+* Support metadata in capture API
+
 * Filter API
 
 * Plugin API
