@@ -233,7 +233,6 @@ class SentryTest(BaseTest):
         self.assertTrue('id' in frame)
         self.assertTrue('filename' in frame)
 
-
     def test_exception_event_with_exc_info(self):
         try:
             raise ValueError('foo bar')

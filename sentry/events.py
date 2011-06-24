@@ -198,17 +198,19 @@ class Message(BaseEvent):
     """
     Messages store the following metadata:
 
-    - message: 'My message'
+    - message: 'My message from %s about %s'
+    - params: ('foo', 'bar')
     """
     def to_string(self, event, data):
-        return data['message']
+        return data['message'] % tuple(data.get('params', ()))
 
-    def get_event_hash(self, message, **kwargs):
-        return [message]
+    def get_event_hash(self, message, params=(), **kwargs):
+        return [message] + list(params)
 
-    def get_data(self, message, **kwargs):
+    def get_data(self, message, params=(), **kwargs):
         return {
             'message': message,
+            'params': params,
         }
 
 class Query(BaseEvent):
