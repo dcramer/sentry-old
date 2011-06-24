@@ -7,8 +7,8 @@ from django.shortcuts import render_to_response
 from django.utils import simplejson
 from django.utils.safestring import mark_safe
 
+from sentry.core.plugins import GroupActionProvider
 from sentry.models import GroupedMessage
-from sentry.plugins import GroupActionProvider
 from sentry.plugins.sentry_redmine import conf
 
 import base64

@@ -9,8 +9,8 @@ from flask import render_template, redirect, request, url_for, \
                   abort, Response
 
 from sentry import app
+from sentry.core.plugins import GroupActionProvider
 from sentry.models import Group, Event, EventType
-from sentry.plugins import GroupActionProvider
 from sentry.web.templatetags import with_priority
 from sentry.utils import get_filters
 from sentry.utils.shortcuts import get_object_or_404

@@ -1,7 +1,7 @@
 from django.shortcuts import render_to_response
 from django.template.loader import render_to_string
 
-from sentry.plugins import GroupActionProvider
+from sentry.core.plugins import GroupActionProvider
 
 class ServerUrlsPanel(GroupActionProvider):
     """Adds additional support for showing information about urls including:
