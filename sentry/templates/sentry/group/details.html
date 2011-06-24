@@ -1,6 +1,6 @@
 {% extends "sentry/layout.html" %}
 
-{% block title %}{{ group.error }} | {{ super() }}{% endblock %}
+{% block title %}{{ group.message }} | {{ super() }}{% endblock %}
 
 {% block heading %}
     {{ gettext('Message Details') }}
