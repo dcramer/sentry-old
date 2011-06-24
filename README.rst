@@ -102,7 +102,7 @@ The majority of this code lies within ``sentry.web.filters``, and are specified 
 What's Left?
 ------------
 
-This is a rough list of features/APIs which need to be completed (this is better described in the issue tracker):
+This is a rough list of features/APIs which need to be completed (*some* of this is better described in the issue tracker):
 
 * Runtime validation of settings (ensure events and filters are valid importables, etc.)
 
@@ -124,7 +124,9 @@ This is a rough list of features/APIs which need to be completed (this is better
 
 * Test coverage
 
-  * Full test coverage should exist for Models and Backends
+  * Models and Backends
+  
+  * Clients
 
 * Decide on final version of client authentication API
 
