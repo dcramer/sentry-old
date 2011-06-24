@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 
-try:
-    import cmath as math
-except ImportError:
-    import math
 import datetime
 
 from sentry import app
 from sentry.db import models
+from sentry.utils.compat import math
 
 class Group(models.Model):
     """
