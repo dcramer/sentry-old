@@ -105,22 +105,40 @@ What's Left?
 This is a rough list of features/APIs which need to be completed (this is better described in the issue tracker):
 
 * Runtime validation of settings (ensure events and filters are valid importables, etc.)
+
 * Filter API
+
 * Plugin API
+
 * Dashboard view needs finalized
+
   * Need to properly index/query on sort+tag combinations
+
   * Implement pagination
+
 * Should consider supporting better interval dashboards. e.g. last 24 hours, vs last 15 minutes
+
 * Django Integration (some draft code is present)
+
 * SQLAlchemy Backend
+
 * Full test coverage should exist for Models and Backends
+
 * Deal with expiration (since we use sorted sets in Redis, we cant just expires on keys)
+
 * Decide on final version of client authentication API
+
   * Probably don't need it to be so secure (nonce is extra load)
+
   * Support should be considered for having multiple "users". A good example use case is if a consulting firm uses a single
     Sentry server and has many clients, but then decides one client's access needs revoked from recording to the logger.
+
 * Make reporting extendable
+
   * The email reporting which was available in Sentry 1.x should simply be a builtin reporting option.
+
   * Add an IRC extension?
+
   * Add a network Growl extension?
+
   * Add an IM extension?
