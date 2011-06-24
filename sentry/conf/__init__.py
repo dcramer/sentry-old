@@ -81,6 +81,7 @@ class SentryConfig(object):
     # cleaner removes them. Set to None to disable
     TRUNCATE_AFTER = datetime.timedelta(days=30)
 
+    # The From address for outgoing emails
     SERVER_EMAIL = None
 
     ## The following settings refer to the built-in webserver
