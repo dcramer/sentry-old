@@ -107,9 +107,7 @@ This is a rough list of features/APIs which need to be completed (this is better
 * Runtime validation of settings (ensure events and filters are valid importables, etc.)
 * Filter API
 * Plugin API
-* Custom Views (still using the old "render everything" logic from Sentry 1.x)
-  * Partially done -- we need to deal with non-magical indexes (e.g. explicit, only index this)
-  * Should consider supporting better interval dashboards. e.g. last 24 hours, vs last 15 minutes
+* Should consider supporting better interval dashboards. e.g. last 24 hours, vs last 15 minutes
 * Dashboard View
 * Django Integration (some draft code is present)
 * SQLAlchemy Backend
@@ -119,3 +117,8 @@ This is a rough list of features/APIs which need to be completed (this is better
   * Probably don't need it to be so secure (nonce is extra load)
   * Support should be considered for having multiple "users". A good example use case is if a consulting firm uses a single
     Sentry server and has many clients, but then decides one client's access needs revoked from recording to the logger.
+* Make reporting extendable
+  * The email reporting which was available in Sentry 1.x should simply be a builtin reporting option.
+  * Add an IRC extension?
+  * Add a network Growl extension?
+  * Add an IM extension?
