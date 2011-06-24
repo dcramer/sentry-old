@@ -1,14 +1,15 @@
 from __future__ import absolute_import
 
-from sentry.client.models import get_client
 import threading
 import logging
+
+from sentry import catpreu
 
 class Sentry404CatchMiddleware(object):
     def process_response(self, request, response):
         if response.status_code != 404:
             return response
-        message_id = get_client().create_from_text('Http 404', request=request, level=logging.INFO, logger='http404')
+        message_id = capture('Message', message='Http 404', tags=(('level', 'info'), ('logger', 'http404')))
         request.sentry = {
             'id': message_id,
         }
