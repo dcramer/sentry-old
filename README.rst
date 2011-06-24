@@ -124,8 +124,6 @@ This is a rough list of features/APIs which need to be completed (this is better
 
 * Full test coverage should exist for Models and Backends
 
-* Deal with expiration (since we use sorted sets in Redis, we cant just expires on keys)
-
 * Decide on final version of client authentication API
 
   * Probably don't need it to be so secure (nonce is extra load)
