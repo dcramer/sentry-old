@@ -117,21 +117,6 @@ class SentryClient(object):
         module, class_name = event_type.rsplit('.', 1)
 
         handler = getattr(__import__(module, {}, {}, [class_name], -1), class_name)()
-        
-        # Grab our tags for this event
-        for k, v in tags:
-            # XXX: this should be cached
-            tag_hash = hashlib.md5('%s=%s' % (k, v)).hexdigest()
-            tag, created = Tag.objects.get_or_create(
-                hash=tag_hash,
-                defaults={
-                    'key': k,
-                    'value': v,
-                    'count': 1,
-                })
-            # Maintain counts
-            if not created:
-                tag.incr('count')
 
         # TODO: this should be generated from the TypeProcessor
         event_hash = hashlib.md5('|'.join(k or '' for k in handler.get_event_hash(**data['__event__']))).hexdigest()

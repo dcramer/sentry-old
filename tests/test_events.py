@@ -13,7 +13,7 @@ class SentryTest(BaseTest):
         # or tests wont pass :)
         now = datetime.datetime.now()
 
-        event, groups = app.client.store(
+        event, group = app.client.store(
             'sentry.events.Message',
             tags=(
                 ('server', 'foo.bar'),
@@ -28,9 +28,6 @@ class SentryTest(BaseTest):
             },
             event_id='foobar',
         )
-        self.assertEquals(len(groups), 1)
-
-        group = groups[0]
         group_id = group.pk
 
         self.assertTrue(group.pk)
@@ -70,7 +67,7 @@ class SentryTest(BaseTest):
         self.assertEquals(tag[0], 'culprit')
         self.assertEquals(tag[1], 'foo.bar.zoo.baz')
 
-        event, groups = app.client.store(
+        event, group = app.client.store(
             'sentry.events.Message',
             tags=(
                 ('server', 'foo.bar'),
@@ -84,10 +81,6 @@ class SentryTest(BaseTest):
             },
             event_id='foobar2',
         )
-
-        self.assertEquals(len(groups), 1)
-
-        group = groups[0]
 
         self.assertEquals(group.pk, group_id)
         self.assertEquals(group.count, 2)
@@ -128,7 +121,7 @@ class SentryTest(BaseTest):
 
         self.assertEquals(tag.key, 'server')
         self.assertEquals(tag.value, 'foo.bar')
-        self.assertEquals(tag.count, 2)
+        self.assertEquals(tag.count, 1)
 
         tag = tags[1]
 

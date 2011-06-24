@@ -248,7 +248,7 @@ class Model(object):
         return u'<%s: %s>' % (self.__class__.__name__, unicode(self))
 
     def __unicode__(self):
-        return self.pk
+        return self.pk or u'None'
 
     def decr(self, key, amount=1):
         result = app.db.decr(self.__class__, self.pk, key, amount)
