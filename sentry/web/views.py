@@ -9,7 +9,7 @@ from flask import render_template, redirect, request, url_for, \
                   abort, Response
 
 from sentry import app
-from sentry.models import Group, Event
+from sentry.models import Group, Event, EventType
 from sentry.plugins import GroupActionProvider
 from sentry.web.templatetags import with_priority
 from sentry.utils import get_filters
@@ -31,19 +31,25 @@ def login_required(func):
     wrapped.__wraps__ = getattr(func, '__wraps__', func)
     return wrapped
 
+@app.context_processor
+def context():
+    return {
+        'event_type_list': EventType.objects.all(),
+    }
+
 @app.route('/auth/login/')
-def login(request):
+def login():
     # TODO:
     pass
 
 @app.route('/auth/logout/')
-def logout(request):
+def logout():
     # TODO:
     pass
 
 @login_required
 @app.route('/search/')
-def search(request):
+def search():
     try:
         page = int(request.args.get('p', 1))
     except (TypeError, ValueError):

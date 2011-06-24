@@ -9,8 +9,112 @@ import hashlib
 
 from sentry import app
 from sentry.db import models
-from sentry.utils import cached_property, MockRequest
 
+class Group(models.Model):
+    """
+    Stores an aggregate (summary) of Event's for a combination of tags
+    given a slice.
+    """
+
+    # key is (type, hash)
+
+    # this is the combination of md5(' '.join(tags)) + md5(event)
+    type            = models.String() # length 32
+    hash            = models.String() # length 32
+    # one line summary used for rendering
+    message         = models.String()
+    state           = models.Integer(default=0)
+    count           = models.Integer(default=0)
+    score           = models.Float(default=0.0)
+    time_spent      = models.Integer(default=0)
+    first_seen      = models.DateTime(default=datetime.datetime.now)
+    last_seen       = models.DateTime(default=datetime.datetime.now)
+    # This is a meta element which needs magically created or something
+    # score           = models.Float(default=0.0)
+    tags            = models.List()
+
+    class Meta:
+        ordering = 'last_seen'
+        sortables = ('time_spent', 'first_seen', 'last_seen', 'score')
+        indexes = (('type', 'hash'),)
+
+    def save(self, *args, **kwargs):
+        created = not self.pk
+        self.score = self.get_score()
+        super(Group, self).save(*args, **kwargs)
+        if created:
+            EventType.add_group(self)
+
+    def delete(self, *args, **kwargs):
+        super(Group, self).delete(*args, **kwargs)
+        EventType.remove_group(self)
+
+    def get_score(self):
+        return float(abs(math.log(self.count) * 600 + float(self.last_seen.strftime('%s.%m'))))
+
+class Event(models.Model):
+    """
+    An individual event. It's processor (type) handles input and output, as well as
+    group summarization.
+    """
+
+    # the hash of this event is defined by its processor (type)
+    hash            = models.String()
+    type            = models.String()
+    date            = models.DateTime(default=datetime.datetime.now)
+    time_spent      = models.Integer(default=0) # in ms
+    tags            = models.List()
+
+    class Meta:
+        ordering = 'date'
+
+    def get_version(self):
+        if not self.data:
+            return
+        if '__sentry__' not in self.data:
+            return
+        if 'version' not in self.data['__sentry__']:
+            return
+        module = self.data['__sentry__'].get('module', 'ver')
+        return module, self.data['__sentry__']['version']
+
+    def get_processor(self):
+        mod_name, class_name = self.type.rsplit('.', 1)
+        processor = getattr(__import__(mod_name, {}, {}, [class_name]), class_name)()
+        return processor
+
+class EventType(models.Model):
+    """
+    Stores a list of all event types seen, as well as
+    a tally of the number of events recorded.
+    """
+    # full module path to Event class, e.g. sentry.events.Exception
+    path            = models.String()
+    # number of unique groups seen for this event
+    count           = models.Integer(default=0)
+
+    class Meta:
+        ordering = 'count'
+        indexes = (('event_type',),)
+
+    def __unicode__(self):
+        return self.path
+
+    @classmethod
+    def add_group(cls, group):
+        et = cls.objects.get_or_create(path=group.type)
+        et.incr('count', 1)
+    
+    @classmethod
+    def remove_group(cls, group):
+        try:
+            et = cls.objects.get(path=group.type)
+        except EventType.DoesNotExist:
+            return
+        res = et.decr('count', 1)
+        if res <= 0:
+            et.delete()
+    
 class Tag(models.Model):
     """
     Stores a unique value of a tag.
@@ -45,127 +149,3 @@ class TagCount(models.Model):
     @classmethod
     def get_tags_hash(cls, tags):
         return hashlib.md5(' '.join('='.join(t) for t in tags)).hexdigest()
-
-class Group(models.Model):
-    """
-    Stores an aggregate (summary) of Event's for a combination of tags
-    given a slice.
-    """
-
-    # key is (type, hash)
-
-    # this is the combination of md5(' '.join(tags)) + md5(event)
-    type            = models.String() # length 32
-    hash            = models.String() # length 32
-    # one line summary used for rendering
-    message         = models.String()
-    state           = models.Integer(default=0)
-    count           = models.Integer(default=0)
-    score           = models.Float(default=0.0)
-    time_spent      = models.Integer(default=0)
-    first_seen      = models.DateTime(default=datetime.datetime.now)
-    last_seen       = models.DateTime(default=datetime.datetime.now)
-    # This is a meta element which needs magically created or something
-    # score           = models.Float(default=0.0)
-    tags            = models.List()
-
-    class Meta:
-        ordering = 'last_seen'
-        sortables = ('time_spent', 'first_seen', 'last_seen', 'score')
-        indexes = (('type', 'hash'),)
-
-    def before_save(self, *args, **kwargs):
-        self.score = self.get_score()
-
-    def get_score(self):
-        return float(abs(math.log(self.count) * 600 + float(self.last_seen.strftime('%s.%m'))))
-
-class Event(models.Model):
-    """
-    An individual event. It's processor (type) handles input and output, as well as
-    group summarization.
-    """
-
-    # the hash of this event is defined by its processor (type)
-    hash            = models.String()
-    type            = models.String()
-    date            = models.DateTime(default=datetime.datetime.now)
-    time_spent      = models.Integer(default=0) # in ms
-    tags            = models.List()
-    # XXX: possibly need to store this completely denormalized so its:
-    # [(tag, value), (tag, value)]
-
-    class Meta:
-        ordering = 'date'
-
-    def mail_admins(self, request=None, fail_silently=True):
-        if not app.config['ADMINS']:
-            return
-
-        from django.core.mail import send_mail
-        from django.template.loader import render_to_string
-
-        message = self.message_set.order_by('-id')[0]
-
-        obj_request = message.request
-
-        subject = 'Error (%s IP): %s' % (obj_request.META.get('REMOTE_ADDR'), obj_request.path)
-        if message.site:
-            subject  = '[%s] %s' % (message.site, subject)
-        try:
-            request_repr = repr(obj_request)
-        except:
-            request_repr = "Request repr() unavailable"
-
-        if request:
-            link = request.build_absolute_url(self.get_absolute_url())
-        else:
-            link = '%s%s' % (app.config['URL_PREFIX'], self.get_absolute_url())
-
-        body = render_to_string('sentry/emails/error.txt', {
-            'request_repr': request_repr,
-            'request': obj_request,
-            'group': self,
-            'traceback': message.traceback,
-            'link': link,
-        })
-
-        send_mail(subject, body,
-                  app.config['SERVER_EMAIL'], app.config['ADMINS'],
-                  fail_silently=fail_silently)
-
-    def get_version(self):
-        if not self.data:
-            return
-        if '__sentry__' not in self.data:
-            return
-        if 'version' not in self.data['__sentry__']:
-            return
-        module = self.data['__sentry__'].get('module', 'ver')
-        return module, self.data['__sentry__']['version']
-
-    def get_processor(self):
-        mod_name, class_name = self.type.rsplit('.', 1)
-        processor = getattr(__import__(mod_name, {}, {}, [class_name]), class_name)()
-        return processor
-
-class RequestEvent(object):
-    def __init__(self, data):
-        self.data = data
-
-    @cached_property
-    def request(self):
-        fake_request = MockRequest(
-            META = self.data.get('META') or {},
-            GET = self.data.get('GET') or {},
-            POST = self.data.get('POST') or {},
-            FILES = self.data.get('FILES') or {},
-            COOKIES = self.data.get('COOKIES') or {},
-            url = self.url,
-        )
-        if self.url:
-            fake_request.path_info = '/' + self.url.split('/', 3)[-1]
-        else:
-            fake_request.path_info = ''
-        fake_request.path = fake_request.path_info
-        return fake_request

@@ -28,7 +28,15 @@
         <div id="header"> 
             <div class="container">
                 <h1><a href="{{ url_for('index') }}"><img src="{{ url_for('static', filename="images/sentry.png") }}" border="0" width="32"/>Sentry</a></h1>
+
                 <h2>{% block heading %}{{ gettext('Dashboard') }}{% endblock %}</h2>
+
+                <ul class="event-selector">
+                    {% for event_type in event_type_list %}
+                        <li{% if event_type.path == current_event_type %} class="active"{% endif %}><a href="#">{{ event_type.path }}</a></li>
+                    {% endfor %}
+                </ul>
+                
                 {% block search %}
                     <form id="search" method="GET" action="{{ url_for('search') }}">
                         <input type="hidden" name="sort" value="{% if sort %}{{ sort }}{% endif %}"/>

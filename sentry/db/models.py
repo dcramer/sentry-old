@@ -237,8 +237,12 @@ class Model(object):
     def __unicode__(self):
         return self.pk
 
-    def before_save(self, *args, **kwargs):
-        pass
+    def decr(self, key, amount=1):
+        result = app.db.decr(self.__class__, self.pk, key, amount)
+        if key in self._meta.sortables:
+            self.objects.add_to_index(self.pk, key, result)
+        setattr(self, key, result)
+        return result
 
     def incr(self, key, amount=1):
         result = app.db.incr(self.__class__, self.pk, key, amount)
@@ -250,8 +254,6 @@ class Model(object):
     def save(self):
         model = self.__class__
         
-        self.before_save()
-
         values = dict((name, getattr(self, name)) for name in self._meta.fields.iterkeys())
 
         # Ensure we've grabbed a primary key
@@ -334,7 +336,6 @@ class Model(object):
     def _get_data(self):
         return self.get_meta() or {}
     data = property(_get_data)
-
 
 class Field(object):
     def __init__(self, default=None, **kwargs):

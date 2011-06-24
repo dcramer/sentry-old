@@ -751,3 +751,7 @@ h2 .morelink { text-decoration: none; }
     padding-right: 0;
     margin-right: 0;
 }
+
+.event-selector {
+    display: none;
+}
