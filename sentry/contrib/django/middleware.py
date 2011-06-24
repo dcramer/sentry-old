@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import threading
 import logging
 
-from sentry import catpreu
+from sentry import capture
 
 class Sentry404CatchMiddleware(object):
     def process_response(self, request, response):
