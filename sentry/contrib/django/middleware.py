@@ -6,7 +6,7 @@ class Sentry404CatchMiddleware(object):
     def process_response(self, request, response):
         if response.status_code != 404:
             return response
-        message_id = capture('Message', message='Http 404', tags=(('level', 'info'), ('logger', 'http404')))
+        message_id = capture('Message', message='Http 404 at %s' % (request.build_absolute_uri()), tags=(('level', 'info'), ('logger', 'http404')))
         request.sentry = {
             'id': message_id,
         }
