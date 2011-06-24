@@ -25,20 +25,20 @@ class ChoiceWidget(Widget):
     def render(self, value, **kwargs):
         choices = self.filter.get_choices()
         query_string = self.get_query_string()
-        column = self.filter.get_query_param()
+        tag = self.filter.get_query_param()
 
-        output = ['<ul class="%s-list filter-list" rel="%s">' % (self.filter.column, column)]
-        output.append('<li%(active)s><a href="%(query_string)s&amp;%(column)s=">Any %(label)s</a></li>' % dict(
+        output = ['<ul class="filter-list" rel="%s">' % (tag,)]
+        output.append('<li%(active)s><a href="%(query_string)s&amp;%(tag)s=">Any %(label)s</a></li>' % dict(
             active=not value and ' class="active"' or '',
             query_string=query_string,
             label=self.filter.label,
-            column=column,
+            tag=tag,
         ))
         for key, val in choices:
             key = unicode(key)
-            output.append('<li%(active)s rel="%(key)s"><a href="%(query_string)s&amp;%(column)s=%(key)s">%(value)s</a></li>' % dict(
+            output.append('<li%(active)s rel="%(key)s"><a href="%(query_string)s&amp;%(tag)s=%(key)s">%(value)s</a></li>' % dict(
                 active=value == key and ' class="active"' or '',
-                column=column,
+                tag=tag,
                 key=key,
                 value=val,
                 query_string=query_string,
@@ -48,11 +48,14 @@ class ChoiceWidget(Widget):
 
 class Filter(object):
     label = ''
-    column = ''
     widget = None
     # This must be a string
     default = ''
     show_label = True
+    
+    def __init__(self, tag):
+        self.tag = tag
+        self.label = tag.title()
     
     def is_set(self):
         return bool(self.get_value())
@@ -61,29 +64,29 @@ class Filter(object):
         return request.args.get(self.get_query_param(), self.default) or ''
     
     def get_query_param(self):
-        return getattr(self, 'query_param', self.column)
+        return getattr(self, 'query_param', self.tag)
 
     def get_widget(self):
         return self.widget(self)
     
     def get_query_string(self):
-        column = self.column
+        tag = self.tag
         query_dict = request.args.copy()
         if 'p' in query_dict:
             del query_dict['p']
-        if column in query_dict:
-            del query_dict[self.column]
+        if tag in query_dict:
+            del query_dict[self.tag]
         return ''
         # TODO: urlencode doesnt exist on Flask request dicts
         return '?' + query_dict.urlencode()
     
     def get_choices(self):
-        return [(t.value, t.value) for t in Tag.objects.filter(key=self.column)]
+        return [(t.value, t.value) for t in Tag.objects.filter(key=self.tag)]
     
     def get_query_set(self, queryset):
         from sentry.models import MessageIndex
-        kwargs = {self.column: self.get_value()}
-        if self.column.startswith('data__'):
+        kwargs = {self.tag: self.get_value()}
+        if self.tag.startswith('data__'):
             return MessageIndex.objects.get_for_queryset(queryset, **kwargs)
         return queryset.filter(**kwargs)
     
@@ -96,7 +99,3 @@ class Filter(object):
 
 class Choice(Filter):
     widget = ChoiceWidget
-    
-    def __init__(self, tag):
-        self.tag = tag
-        self.label = tag.title()

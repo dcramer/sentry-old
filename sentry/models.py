@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import datetime
+import hashlib
 
 from sentry import app
 from sentry.db import models
@@ -40,10 +41,12 @@ class Group(models.Model):
         super(Group, self).save(*args, **kwargs)
         if created:
             EventType.add_group(self)
+            Tag.add_group(self)
 
     def delete(self, *args, **kwargs):
         super(Group, self).delete(*args, **kwargs)
         EventType.remove_group(self)
+        Tag.remove_group(self)
 
     def get_score(self):
         return float(abs(math.log(self.count) * 600 + float(self.last_seen.strftime('%s.%m'))))
@@ -98,8 +101,14 @@ class EventType(models.Model):
 
     @classmethod
     def add_group(cls, group):
-        et = cls.objects.get_or_create(path=group.type)[0]
-        et.incr('count', 1)
+        et, created = cls.objects.get_or_create(
+            path=group.type,
+            defaults={
+                'count': 1,
+            }
+        )
+        if not created:
+            et.incr('count', 1)
     
     @classmethod
     def remove_group(cls, group):
@@ -107,8 +116,9 @@ class EventType(models.Model):
             et = cls.objects.get(path=group.type)
         except EventType.DoesNotExist:
             return
-        res = et.decr('count', 1)
-        if res <= 0:
+
+        et.decr('count', 1)
+        if et.count <= 0:
             et.delete()
 
 class Tag(models.Model):
@@ -117,6 +127,7 @@ class Tag(models.Model):
     """
 
     key             = models.String() # length 16?
+    # hash is md5('key=value')
     hash            = models.String() # length 32
     value           = models.String()
     count           = models.Integer(default=0)
@@ -127,3 +138,30 @@ class Tag(models.Model):
 
     def __unicode__(self):
         return u"%s=%s; count=%s" % (self.key, self.value, self.count)
+
+    @classmethod
+    def add_group(cls, group):
+        for key, value in group.tags:
+            hash = hashlib.md5(u'%s=%s' % (key, value)).hexdigest()
+            tag, created = cls.objects.get_or_create(
+                hash=hash,
+                defaults={
+                    'key': key,
+                    'value': value,
+                    'count': 1,
+                }
+            )
+            if not created:
+                tag.incr('count', 1)
+    
+    @classmethod
+    def remove_group(cls, group):
+        for key, value in group.tags:
+            try:
+                tag = cls.objects.get(hash=hash)
+            except cls.DoesNotExist:
+                continue
+
+            tag.decr('count', 1)
+            if tag.count <= 0:
+                tag.delete()
