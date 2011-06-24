@@ -39,9 +39,11 @@ class ManagerDescriptor(object):
         return self.manager
 
 class QuerySet(object):
-    def __init__(self, model, order_by=None):
+    def __init__(self, model, order_by=None, filter_by=None):
+        assert not (order_by and filter_by)
         self.model = model
         self.index = order_by or self.model._meta.ordering
+        self.filter = filter_by
     
     def __repr__(self):
         return u'<%s: %s>' % (self.__class__.__name__, list(self))
@@ -68,7 +70,13 @@ class QuerySet(object):
             desc = False
             index = self.index
 
-        results = [self.model(pk, **data) for pk, data in app.db.list(self.model, index, start, num, desc)]
+
+        if self.filter:
+            data = [(pk, app.db.get_data(self.model, pk)) for pk in app.db.list_by_cindex(self.model, **to_db(self.model, self.filter))]
+        else:
+            data = app.db.list(self.model, index, start, num, desc)
+
+        results = [self.model(pk, **data) for pk, data in data]
         
         if is_slice:
             return results
@@ -87,6 +95,7 @@ class QuerySet(object):
             yield r
 
     def order_by(self, index):
+        assert not self.filter
         self.index = index
         return self
     
@@ -99,6 +108,10 @@ class Manager(object):
 
     def get_query_set(self):
         return QuerySet(self.model)
+
+    def filter(self, **kwargs):
+        assert len(kwargs) == 1
+        return QuerySet(self.model, filter_by=kwargs)
 
     def all(self):
         return self.get_query_set()

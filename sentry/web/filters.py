@@ -1,14 +1,14 @@
 # Widget api is pretty ugly
 from __future__ import absolute_import
 
-from collections import OrderedDict
 from sentry import app
+from sentry.models import Tag
+from flask import request
 from jinja2 import Markup, escape
 
 class Widget(object):
-    def __init__(self, filter, request):
+    def __init__(self, filter):
         self.filter = filter
-        self.request = request
 
     def get_query_string(self):
         return self.filter.get_query_string()
@@ -34,7 +34,7 @@ class ChoiceWidget(Widget):
             label=self.filter.label,
             column=column,
         ))
-        for key, val in choices.iteritems():
+        for key, val in choices:
             key = unicode(key)
             output.append('<li%(active)s rel="%(key)s"><a href="%(query_string)s&amp;%(column)s=%(key)s">%(value)s</a></li>' % dict(
                 active=value == key and ' class="active"' or '',
@@ -46,43 +46,39 @@ class ChoiceWidget(Widget):
         output.append('</ul>')
         return Markup('\n'.join(output))
 
-class SentryFilter(object):
+class Filter(object):
     label = ''
     column = ''
-    widget = ChoiceWidget
+    widget = None
     # This must be a string
     default = ''
     show_label = True
-    
-    def __init__(self, request):
-        self.request = request
     
     def is_set(self):
         return bool(self.get_value())
     
     def get_value(self):
-        return self.request.GET.get(self.get_query_param(), self.default) or ''
+        return request.args.get(self.get_query_param(), self.default) or ''
     
     def get_query_param(self):
         return getattr(self, 'query_param', self.column)
 
     def get_widget(self):
-        return self.widget(self, self.request)
+        return self.widget(self)
     
     def get_query_string(self):
         column = self.column
-        query_dict = self.request.GET.copy()
+        query_dict = request.args.copy()
         if 'p' in query_dict:
             del query_dict['p']
         if column in query_dict:
             del query_dict[self.column]
+        return ''
+        # TODO: urlencode doesnt exist on Flask request dicts
         return '?' + query_dict.urlencode()
     
     def get_choices(self):
-        from sentry.models import FilterValue
-        return OrderedDict((l, l) for l in FilterValue.objects.filter(key=self.column)\
-                                                     .values_list('value', flat=True)\
-                                                     .order_by('value'))
+        return [(t.value, t.value) for t in Tag.objects.filter(key=self.column)]
     
     def get_query_set(self, queryset):
         from sentry.models import MessageIndex
@@ -92,55 +88,15 @@ class SentryFilter(object):
         return queryset.filter(**kwargs)
     
     def process(self, data):
-        """``self.request`` is not available within this method"""
         return data
     
     def render(self):
         widget = self.get_widget()
         return widget.render(self.get_value())
 
-class StatusFilter(SentryFilter):
-    label = 'Status'
-    column = 'status'
-    default = '0'
-
-    def get_choices(self):
-        return OrderedDict([
-            (0, 'Unresolved'),
-            (1, 'Resolved'),
-        ])
-
-class LoggerFilter(SentryFilter):
-    label = 'Logger'
-    column = 'logger'
-
-class ServerNameFilter(SentryFilter):
-    label = 'Server Name'
-    column = 'server_name'
-
-    def get_query_set(self, queryset):
-        return queryset.filter(message_set__server_name=self.get_value()).distinct()
-
-class SiteFilter(SentryFilter):
-    label = 'Site'
-    column = 'site'
-
-    def process(self, data):
-        if 'site' in data:
-            return data
-        if app.config['SITE']:
-            data['site'] = app.config['SITE']
-        return data
-
-    def get_query_set(self, queryset):
-        return queryset.filter(message_set__site=self.get_value()).distinct()
-
-class LevelFilter(SentryFilter):
-    label = 'Level'
-    column = 'level'
+class Choice(Filter):
+    widget = ChoiceWidget
     
-    def get_choices(self):
-        return OrderedDict((str(k), v) for k, v in app.config['LOG_LEVELS'])
-    
-    def get_query_set(self, queryset):
-        return queryset.filter(level__gte=self.get_value())
+    def __init__(self, tag):
+        self.tag = tag
+        self.label = tag.title()

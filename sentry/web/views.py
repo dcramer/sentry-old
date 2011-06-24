@@ -95,9 +95,7 @@ def search():
 @login_required
 @app.route('/')
 def index():
-    filters = []
-    for filter_ in get_filters():
-        filters.append(filter_(request))
+    filter_list = list(get_filters())
 
     try:
         page = int(request.args.get('p', 1))
@@ -117,8 +115,6 @@ def index():
         sort = 'priority'
         event_list = event_list.order_by('-score')
 
-    filters = []
-
     any_filter = False
     # for filter_ in filters:
     #     if not filter_.is_set():
@@ -129,7 +125,7 @@ def index():
     today = datetime.datetime.now()
 
     has_realtime = page == 1
-
+    
     return render_template('sentry/index.html', **{
         'has_realtime': has_realtime,
         'event_list': event_list,
@@ -137,7 +133,7 @@ def index():
         'sort': sort,
         'any_filter': any_filter,
         'request': request,
-        'filters': filters,
+        'filter_list': filter_list,
     })
 
 @login_required

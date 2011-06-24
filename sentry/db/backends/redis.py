@@ -57,6 +57,10 @@ class RedisBackend(SentryBackend):
     def get_meta(self, schema, pk):
         return self.conn.hgetall(self._get_metadata_key(schema, pk))
 
+    def get_data(self, schema, pk):
+        return self.conn.hgetall(self._get_data_key(schema, pk))
+
+
     def count(self, schema, index='default'):
         return self.conn.zcard(self._get_index_key(schema, index))
 
@@ -66,7 +70,7 @@ class RedisBackend(SentryBackend):
         else:
             end = limit
         pk_set = self.conn.zrange(self._get_index_key(schema, index), start=offset, end=end, desc=desc)
-        return [(pk, self.conn.hgetall(self._get_data_key(schema, pk))) for pk in pk_set]
+        return [(pk, self.get_data(schema, pk)) for pk in pk_set]
 
     ## Indexes using sorted sets
 

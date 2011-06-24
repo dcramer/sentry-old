@@ -22,10 +22,10 @@ def get_filters(from_cache=True):
                 module = __import__(module_name, {}, {}, class_name)
                 handler = getattr(module, class_name)
             except Exception:
-                logger = logging.getLogger('sentry.errors')
+                logger = logging.getLogger('sentry.web.filters')
                 logger.exception('Unable to import %s' % (path,))
                 continue
-            filters.append((key, handler))
+            filters.append(handler(key))
 
         FILTER_CACHE = filters
 

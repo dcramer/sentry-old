@@ -5,7 +5,6 @@ try:
 except ImportError:
     import math
 import datetime
-import hashlib
 
 from sentry import app
 from sentry.db import models
@@ -95,14 +94,14 @@ class EventType(models.Model):
 
     class Meta:
         ordering = 'count'
-        indexes = (('event_type',),)
+        indexes = (('path',),)
 
     def __unicode__(self):
         return self.path
 
     @classmethod
     def add_group(cls, group):
-        et = cls.objects.get_or_create(path=group.type)
+        et = cls.objects.get_or_create(path=group.type)[0]
         et.incr('count', 1)
     
     @classmethod
@@ -114,7 +113,7 @@ class EventType(models.Model):
         res = et.decr('count', 1)
         if res <= 0:
             et.delete()
-    
+
 class Tag(models.Model):
     """
     Stores a unique value of a tag.
@@ -127,25 +126,7 @@ class Tag(models.Model):
 
     class Meta:
         ordering = 'count'
-        indexes = (('hash',),)
+        indexes = (('hash',), ('key',))
 
     def __unicode__(self):
         return u"%s=%s; count=%s" % (self.key, self.value, self.count)
-
-class TagCount(models.Model):
-    """
-    Stores the total number of events recorded for a combination of tags.
-    """
-
-    # this is md5(' '.join(tags))
-    hash            = models.String() # length 32
-    count           = models.Integer(default=0)
-    tags            = models.List()
-
-    class Meta:
-        ordering = 'count'
-        indexes = (('hash',),)
-
-    @classmethod
-    def get_tags_hash(cls, tags):
-        return hashlib.md5(' '.join('='.join(t) for t in tags)).hexdigest()
