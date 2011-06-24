@@ -167,6 +167,8 @@ class SentryClient(object):
 
         group.add_relation(event, date.strftime('%s.%m'))
 
+        # TODO: we need to manually add indexes per sort+filter value pair
+
         return event, group
 
     def send_remote(self, url, data, headers={}):

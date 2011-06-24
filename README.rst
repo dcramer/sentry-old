@@ -107,9 +107,10 @@ This is a rough list of features/APIs which need to be completed (this is better
 * Runtime validation of settings (ensure events and filters are valid importables, etc.)
 * Filter API
 * Plugin API
-* Implement pagination
+* Dashboard view needs finalized
+  * Need to properly index/query on sort+tag combinations
+  * Implement pagination
 * Should consider supporting better interval dashboards. e.g. last 24 hours, vs last 15 minutes
-* Dashboard View
 * Django Integration (some draft code is present)
 * SQLAlchemy Backend
 * Full test coverage should exist for Models and Backends
