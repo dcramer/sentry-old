@@ -75,6 +75,9 @@ class SentryConfig(object):
 
     DATASTORE = {
         'ENGINE': 'sentry.db.backends.redis.RedisBackend',
+        'OPTIONS': {
+            'key_prefix': 'sentry:'
+        }
     }
     
     # Controls how long entries should stay along before the

@@ -6,25 +6,29 @@ import datetime
 import redis
 
 class RedisBackend(SentryBackend):
-    def __init__(self, host='localhost', port=6379, db=0):
+    def __init__(self, host='localhost', port=6379, db=0, key_prefix=''):
         self.conn = redis.Redis(host, port, db)
+        self.key_prefix = key_prefix
 
     ## Keys
     
+    def _get_key(self, key):
+        return '%s:%s' % (self.key_prefix, key)
+    
     def _get_data_key(self, schema, pk):
-        return 'data:%s:%s' % (self._get_schema_name(schema), pk)
+        return self._get_key('data:%s:%s' % (self._get_schema_name(schema), pk))
 
     def _get_metadata_key(self, schema, pk):
-        return 'metadata:%s:%s' % (self._get_schema_name(schema), pk)
+        return self._get_key('metadata:%s:%s' % (self._get_schema_name(schema), pk))
 
     def _get_index_key(self, schema, index):
-        return 'index:%s:%s' % (self._get_schema_name(schema), index)
+        return self._get_key('index:%s:%s' % (self._get_schema_name(schema), index))
 
     def _get_relation_key(self, from_schema, from_pk, to_schema):
-        return 'rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema))
+        return self._get_key('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)))
 
     def _get_constraint_key(self, schema, kwargs):
-        return 'cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**kwargs))
+        return self._get_key('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**kwargs)))
 
     ## Hash table lookups
 
