@@ -15,5 +15,5 @@ class WSGIErrorMiddleware(object):
 
     def handle_exception(self, exc_info, environ):
         from sentry import capture
-        event_id = capture('sentry.events.Exception', exc_info=exc_info)
+        event_id = capture('Exception', exc_info=exc_info)
         return event_id
