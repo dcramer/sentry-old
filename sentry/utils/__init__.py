@@ -8,33 +8,28 @@ from types import ClassType, TypeType
 
 import sentry
 from sentry import app
-from sentry.core import slices
 from sentry.utils.encoding import force_unicode
 
-_FILTER_CACHE = {}
-def get_filters(slug):
-    global _FILTER_CACHE
+FILTER_CACHE = None
+def get_filters(from_cache=True):
+    global FILTER_CACHE
 
-    if slug not in _FILTER_CACHE:
-        slice_ = slices.get(slug)
-        
+    if FILTER_CACHE is None or not from_cache:
         filters = []
-        for filter_ in slice_.filters:
-            if filter_.endswith('sentry.filters.SearchFilter'):
-                continue
-            module_name, class_name = filter_.rsplit('.', 1)
+        for key, path in app.config['FILTERS']:
+            module_name, class_name = path.rsplit('.', 1)
             try:
                 module = __import__(module_name, {}, {}, class_name)
-                filter_ = getattr(module, class_name)
+                handler = getattr(module, class_name)
             except Exception:
                 logger = logging.getLogger('sentry.errors')
-                logger.exception('Unable to import %s' % (filter_,))
+                logger.exception('Unable to import %s' % (path,))
                 continue
-            filters.append(filter_)
+            filters.append((key, handler))
 
-        _FILTER_CACHE[slug] = filters
+        FILTER_CACHE = filters
 
-    for f in _FILTER_CACHE[slug]:
+    for f in FILTER_CACHE:
         yield f
 
 def construct_checksum(level=logging.ERROR, class_name='', traceback='', message='', **kwargs):

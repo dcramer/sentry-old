@@ -71,6 +71,12 @@ def cleanup(days=30, tags=None):
         if event.date > ts:
             break
         event.delete()
+    
+    for group in Group.objects.order_by('last_seen'):
+        if group.last_seen > ts:
+            break
+        event.delete()
+
 
 def upgrade():
     pass
@@ -114,7 +120,11 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.config:
-        app.config.from_object(options.config)
+        app.config.from_pyfile(options.config)
+    else:
+        config_path = os.path.expanduser(os.path.join('~', '.sentry', 'sentry.conf.py'))
+        if os.path.exists(config_path):
+            app.config.from_pyfile(config_path)
 
     if args[0] == 'upgrade':
         upgrade()

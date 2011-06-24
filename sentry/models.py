@@ -48,14 +48,15 @@ class TagCount(models.Model):
 
 class Group(models.Model):
     """
-    Stores an aggregate (summary) of Event's for a combination of tags.
+    Stores an aggregate (summary) of Event's for a combination of tags
+    given a slice.
     """
 
     # key is (type, hash)
 
     # this is the combination of md5(' '.join(tags)) + md5(event)
     type            = models.String() # length 32
-    hash            = models.String() # length 64
+    hash            = models.String() # length 32
     # one line summary used for rendering
     message         = models.String()
     state           = models.Integer(default=0)

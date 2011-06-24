@@ -9,7 +9,6 @@ from flask import render_template, redirect, request, url_for, \
                   abort, Response
 
 from sentry import app
-from sentry.core import slices
 from sentry.models import Group, Event
 from sentry.plugins import GroupActionProvider
 from sentry.web.templatetags import with_priority
@@ -79,7 +78,7 @@ def search(request):
     else:
         sort = 'relevance'
 
-    return render_template('sentry/search.html', {
+    return render_template('sentry/search.html', **{
         'event_list': event_list,
         'query': query,
         'sort': sort,
@@ -90,23 +89,8 @@ def search(request):
 @login_required
 @app.route('/')
 def index():
-    all_slices = list(slices.all())
-
-    if len(all_slices) == 1:
-        return redirect(url_for('view_slice', slug=all_slices[0].slug))
-
-    # Render dashboard
-    return render_template('sentry/dashboard.html', {
-        'slices': all_slices,
-    })
-
-@login_required
-@app.route('/show/<slug>/')
-def view_slice(slug):
-    slice_ = slices.get(slug)
-    
     filters = []
-    for filter_ in get_filters(slug):
+    for filter_ in get_filters():
         filters.append(filter_(request))
 
     try:
@@ -114,7 +98,6 @@ def view_slice(slug):
     except (TypeError, ValueError):
         page = 1
 
-    # TODO: this needs to pull in the event list for this slice
     event_list = Group.objects.all()
 
     sort = request.args.get('sort')
@@ -141,8 +124,7 @@ def view_slice(slug):
 
     has_realtime = page == 1
 
-    return render_template('sentry/slice.html', **{
-        'slice_name': slice_.name,
+    return render_template('sentry/index.html', **{
         'has_realtime': has_realtime,
         'event_list': event_list,
         'today': today,

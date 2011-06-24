@@ -12,7 +12,6 @@ import urllib2
 from sentry import app
 
 import sentry
-from sentry.core import slices
 from sentry.utils import get_versions, transform
 from sentry.utils.api import get_mac_signature, get_auth_header
 from sentry.models import Tag, Group, Event
@@ -149,53 +148,26 @@ class SentryClient(object):
 
         event_message = handler.to_string(event, data.get('__event__'))
 
-        groups = []
+        group, created = Group.objects.get_or_create(
+            type=event_type,
+            hash=event_hash,
+            defaults={
+                'count': 1,
+                'time_spent': time_spent or 0,
+                'tags': tags,
+                'message': event_message,
+            }
+        )
+        if not created:
+            group.incr('count')
+            if time_spent:
+                group.incr('time_spent', time_spent)
 
-        # For each view that handles this event, we need to create a Group
-        for slice_ in slices.all():
-            if slice_.is_valid_event(event_type):
-                # # We only care about tags which are required for this view
-                # event_tags = [(k, v) for k, v in tags if k in view.get('tags', [])]
-                # tags_hash = TagCount.get_tags_hash(event_tags)
-                # 
-                # # Handle TagCount creation and incrementing
-                # tc, created = TagCount.objects.get_or_create(
-                #     hash=tags_hash,
-                #     defaults={
-                #         'tags': event_tags,
-                #         'count': 1,
-                #     }
-                # )
-                # if not created:
-                #     tc.incr('count')
+        group.update(last_seen=event.date, score=group.get_score())
 
-                group_message = event_message
-                # if not view.get('labelby'):
-                #     group_message = event_message
-                # else:
-                #     # TODO:
-                group, created = Group.objects.get_or_create(
-                    type=event_type,
-                    hash=slice_.id + event_hash,
-                    defaults={
-                        'count': 1,
-                        'time_spent': time_spent or 0,
-                        'tags': tags,
-                        'message': group_message,
-                    }
-                )
-                if not created:
-                    group.incr('count')
-                    if time_spent:
-                        group.incr('time_spent', time_spent)
+        group.add_relation(event, date.strftime('%s.%m'))
 
-                group.update(last_seen=event.date, score=group.get_score())
-
-                group.add_relation(event, date.strftime('%s.%m'))
-
-                groups.append(group)
-
-        return event, groups
+        return event, group
 
     def send_remote(self, url, data, headers={}):
         req = urllib2.Request(url, headers=headers)

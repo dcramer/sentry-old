@@ -67,40 +67,12 @@ class SentryConfig(object):
     MAX_LENGTH_LIST = 50
     MAX_LENGTH_STRING = 200
 
-    SLICES = {
-        'everything': {
-            'name': 'Everything',
-        },
-        # 'errors': {
-        #     'name': 'Exceptions',
-        #     'events': ['sentry.events.Exception'],
-        #     'filters': [
-        #         ('server', 'sentry.web.filters.Choice'),
-        #         ('level', 'sentry.web.filters.Choice'),
-        #         ('logger', 'sentry.web.filters.Choice'),
-        #     ],
-        #     # override the default label 
-        #     'labelby': 'url',
-        # },
-        # 'events': {
-        #     'name': 'Messages',
-        #     'events': ['sentry.events.Message'],
-        #     'filters': [
-        #         ('server', 'sentry.web.filters.Choice'),
-        #         ('level', 'sentry.web.filters.Choice'),
-        #         ('logger', 'sentry.web.filters.Choice'),
-        #     ],
-        # },
-        # 'sql': {
-        #     'name': 'SQL',
-        #     'events': ['sentry.events.Query'],
-        #     'filters': [
-        #         ('server', 'sentry.web.filters.Choice'),
-        #         ('duration', 'sentry.web.filters.Duration'),
-        #     ],
-        # },
-    }
-    
+    FILTERS = [
+        ('server', 'sentry.web.filters.Choice'),
+        ('level', 'sentry.web.filters.Choice'),
+        ('logger', 'sentry.web.filters.Choice'),
+    ]
+
     DATASTORE = {
         'ENGINE': 'sentry.db.backends.redis.RedisBackend',
     }
