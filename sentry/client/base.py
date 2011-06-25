@@ -47,7 +47,7 @@ class SentryClient(object):
         To use structured data (interfaces) with capture:
         
         >>> capture('Message', message='foo', data={
-        >>>     'sentry.core.interfaces.Http': {
+        >>>     'sentry.interfaces.Http': {
         >>>         'url': '...',
         >>>         'data': {},
         >>>         'querystring': '...',
@@ -102,14 +102,17 @@ class SentryClient(object):
 
         result = handler.capture(**kwargs)
 
-        tags = list(tags) + result['tags']
+        tags = list(tags) + result.pop('tags', [])
 
-        data['extra'] = extra
-        data['event'] = result['data']
-        
         if not culprit:
-            culprit = result.get('culprit')
-        
+            culprit = result.pop('culprit')
+
+        for k, v in result.iteritems():
+            if k not in data:
+                data[k] = v
+            else:
+                data[k].update(v)
+
         for k, v in data.iteritems():
             if '.' not in k:
                 continue
@@ -176,7 +179,7 @@ class SentryClient(object):
 
         handler = getattr(__import__(module, {}, {}, [class_name], -1), class_name)()
 
-        event_hash = hashlib.md5('|'.join(k or '' for k in handler.get_event_hash(**data['event']))).hexdigest()
+        event_hash = hashlib.md5('|'.join(k or '' for k in handler.get_event_hash(**data[handler.interface]))).hexdigest()
 
         event = Event.objects.create(
             pk=event_id,
@@ -188,7 +191,7 @@ class SentryClient(object):
         )
         event.set_meta(**data)
 
-        event_message = handler.to_string(event, data.get('event'))
+        event_message = handler.to_string(event, data[handler.interface])
 
         group, created = Group.objects.get_or_create(
             type=event_type,

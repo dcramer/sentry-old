@@ -28,7 +28,7 @@ class WSGIErrorMiddleware(object):
         event_id = capture('Exception',
             exc_info=exc_info,
             data={
-                'sentry.core.interfaces.Http': {
+                'sentry.interfaces.Http': {
                     'method': environ.get('REQUEST_METHOD'),
                     'url': get_current_url(environ, strip_querystring=True),
                     'querystring': environ.get('QUERY_STRING'),

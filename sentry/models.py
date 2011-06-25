@@ -11,7 +11,7 @@ from __future__ import absolute_import
 import datetime
 import hashlib
 
-from sentry.core.interfaces import unserialize
+from sentry.interfaces import unserialize
 from sentry.db import models
 from sentry.utils.compat import math
 

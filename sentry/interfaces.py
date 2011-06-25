@@ -1,5 +1,5 @@
 """
-sentry.core.interfaces
+sentry.interfaces
 ~~~~~~~~~~~~~~~~~~~~~~
 
 :copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
@@ -40,6 +40,48 @@ class Interface(object):
     
     def to_html(self, event):
         return ''
+
+class Message(Interface):
+    def __init__(self, message, params):
+        self.message = message
+        self.params = params
+    
+    def serialize(self):
+        return {
+            'message': self.message,
+            'params': self.params,
+        }
+
+class Query(Interface):
+    def __init__(self, query, engine):
+        self.query = query
+        self.engine = engine
+    
+    def serialize(self):
+        return {
+            'query': self.query,
+            'engine': self.engine,
+        }
+
+class Exception(Interface):
+    def __init__(self, type, value, frames):
+        self.type = type
+        self.value = value
+        self.frames = frames
+    
+    def serialize(self):
+        return {
+            'type': self.type,
+            'value': self.value,
+            'frames': self.frames,
+        }
+    
+    def to_html(self, event):
+        return render_template('sentry/partial/interfaces/exception.html', **{
+            'exception_value': self.value,
+            'exception_type': self.type,
+            'frames': self.frames,
+        })
 
 class Http(Interface):
     # methods as defined by http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html

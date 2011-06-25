@@ -9,8 +9,6 @@ sentry.events
 import re
 import sys
 
-from flask import render_template
-
 from sentry import app
 from sentry.utils import transform
 
@@ -20,9 +18,6 @@ class BaseEvent(object):
     def to_string(self, event, data):
         raise NotImplementedError
     
-    def to_html(self, event, data):
-        return
-    
     def get_data(self, **kwargs):
         return {}
     
@@ -30,10 +25,12 @@ class BaseEvent(object):
         return []
     
     def capture(self, **kwargs):
+        # tags and culprit are special cased and not stored with the
+        # default metadata
         return {
             'culprit': None,
-            'data': self.get_data(**kwargs),
             'tags': self.get_tags(**kwargs),
+            self.interface: self.get_data(**kwargs),
         }
 
 class Exception(BaseEvent):
@@ -45,19 +42,16 @@ class Exception(BaseEvent):
     - frames: a list of serialized frames (see _get_traceback_frames)
     - template: 'template/name.html'
     """
+    interface = 'sentry.interfaces.Exception'
+    
     def to_string(self, event, data):
-        return '%s: %s' % (data['type'], data['value'])
+        if data['value']:
+            return '%s: %s' % (data['type'], data['value'])
+        return data['type']
 
-    def to_html(self, event, data):
-        return render_template('sentry/partial/events/exception.html', **{
-            'exception_value': data['value'],
-            'exception_type': data['type'],
-            'frames': data['frames'],
-        })
-
-    def get_event_hash(self, value, type, frames, **kwargs):
+    def get_event_hash(self, type, value, **kwargs):
         # TODO: Need to add in the frames without line numbers
-        return [value, type]
+        return [type, value]
 
     def capture(self, exc_info=None, **kwargs):
         if exc_info is None:
@@ -79,12 +73,6 @@ class Exception(BaseEvent):
             exc_module = None
             exc_type = exc_type.__name__
 
-        result = {
-            'value': transform(exc_value),
-            'type': exc_type,
-            'frames': self._get_traceback_frames(exc_traceback)
-        } 
-
         # if isinstance(exc_value, TemplateSyntaxError) and hasattr(exc_value, 'source'):
         #     origin, (start, end) = exc_value.source
         #     result['template'] = (origin.reload(), start, end, origin.name)
@@ -92,8 +80,12 @@ class Exception(BaseEvent):
 
         return {
             'culprit': culprit,
-            'data': result,
             'tags': tags,
+            'sentry.interfaces.Exception': {
+                'value': transform(exc_value),
+                'type': exc_type,
+                'frames': self._get_traceback_frames(exc_traceback)
+            },
         }
 
     def _iter_tb(self, tb):
@@ -209,6 +201,9 @@ class Message(BaseEvent):
     - message: 'My message from %s about %s'
     - params: ('foo', 'bar')
     """
+
+    interface = 'sentry.interfaces.Message'
+
     def to_string(self, event, data):
         return data['message'] % tuple(data.get('params', ()))
 
@@ -228,6 +223,8 @@ class Query(BaseEvent):
     - query: 'SELECT * FROM table'
     - engine: 'postgesql_psycopg2'
     """
+    interface = 'sentry.interfaces.Query'
+    
     def to_string(self, event, data):
         return data['query']
     

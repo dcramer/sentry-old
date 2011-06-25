@@ -8,7 +8,7 @@ sentry.scripts.data_faker
 """
 
 from sentry import VERSION, app, capture
-from sentry.core.interfaces import Http
+from sentry.interfaces import Http
 
 import os.path
 import random
@@ -65,7 +65,7 @@ def main():
 
         if random.randint(0, 1) == 1:
             kwargs['data'] = {
-                'sentry.core.interfaces.Http': {
+                'sentry.interfaces.Http': {
                     'url': urls[n % len(urls)],
                     'method': http_methods[n % len(http_methods)],
                 }
