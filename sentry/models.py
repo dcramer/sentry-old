@@ -11,7 +11,7 @@ from __future__ import absolute_import
 import datetime
 import hashlib
 
-from sentry import app
+from sentry.core.interfaces import unserialize
 from sentry.db import models
 from sentry.utils.compat import math
 
@@ -83,9 +83,22 @@ class Event(models.Model):
         return self.data['version']
 
     def get_processor(self):
+        # TODO: should use general import cache
         mod_name, class_name = self.type.rsplit('.', 1)
         processor = getattr(__import__(mod_name, {}, {}, [class_name]), class_name)()
         return processor
+    
+    def get_interfaces(self):
+        # TODO: should use general import cache
+        interfaces = []
+        for k, v in self.data.iteritems():
+            if '.' not in k:
+                continue
+            
+            mod_name, class_name = k.rsplit('.', 1)
+            interface = getattr(__import__(mod_name, {}, {}, [class_name]), class_name)
+            interfaces.append(unserialize(interface, v))
+        return interfaces
 
 class EventType(models.Model):
     """

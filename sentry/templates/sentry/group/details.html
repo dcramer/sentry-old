@@ -68,6 +68,10 @@
             {% endif %}
             
             {{ event_html }}
+
+            {% for interface in interface_list %}
+                {{ interface }}
+            {% endfor %}
             
             {% with chart_data=group|chart_data() %}
                 {% if chart_data %}

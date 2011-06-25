@@ -229,6 +229,7 @@ def group_details(group_id):
     
     return render_template('sentry/group/details.html', **{
         'page': 'details',
+        'interface_list': filter(None, [Markup(i.to_html(last_event) or '') for i in last_event.get_interfaces()]),
         'group': group,
         'json_data': iter_data(last_event),
         'event_html': event_html,

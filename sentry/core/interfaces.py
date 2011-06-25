@@ -8,6 +8,8 @@ sentry.core.interfaces
 
 import urlparse
 
+from flask import render_template
+
 # unserialization concept is based on pickle
 class _EmptyClass(object):
     pass
@@ -35,6 +37,9 @@ class Interface(object):
         
     def serialize(self):
         return {}
+    
+    def to_html(self, event):
+        return ''
 
 class Http(Interface):
     # methods as defined by http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html
@@ -70,3 +75,13 @@ class Http(Interface):
             'data': self.data,
             'querystring': self.querystring,
         }
+
+    def to_html(self, event):
+        return render_template('sentry/partial/interfaces/http.html', **{
+            'full_url': '?'.join(filter(None, [self.url, self.querystring])),
+            'url': self.url,
+            'method': self.method,
+            'data': self.data,
+            'querystring': self.querystring,
+        })
+        
