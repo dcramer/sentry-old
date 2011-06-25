@@ -21,8 +21,13 @@ class LoggingSentryClient(SentryClient):
         super(LoggingSentryClient, self).__init__(*args, **kwargs)
         self.logger = logging.getLogger(self.logger_name)
     
-    def send(self, **kwargs):
+    def send(self, event_type, data, **kwargs):
         exc_info = sys.exc_info()
-        self.logger.log(kwargs.pop('level', None) or self.default_level,
-                        kwargs.pop('message', None) or exc_info[0],
-                        exc_info=exc_info, extra=kwargs)
+
+        module, class_name = event_type.rsplit('.', 1)
+
+        handler = getattr(__import__(module, {}, {}, [class_name], -1), class_name)()
+
+        message = handler.to_string(data[handler.interface])
+
+        self.logger.log(self.default_level, message, exc_info=True, extra=data)

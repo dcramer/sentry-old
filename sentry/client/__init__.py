@@ -21,7 +21,6 @@ class ClientProxy(object):
         return client
     
     def capture(self, *args, **kwargs):
-        print self.__get_client().capture
         return self.__get_client().capture(*args, **kwargs)
 
 def get_client(path):

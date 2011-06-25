@@ -15,7 +15,7 @@ from sentry.utils import transform
 __all__ = ('BaseEvent', 'Exception', 'Message', 'Query')
 
 class BaseEvent(object):
-    def to_string(self, event, data):
+    def to_string(self, data):
         raise NotImplementedError
     
     def get_data(self, **kwargs):
@@ -44,7 +44,7 @@ class Exception(BaseEvent):
     """
     interface = 'sentry.interfaces.Exception'
     
-    def to_string(self, event, data):
+    def to_string(self, data):
         if data['value']:
             return '%s: %s' % (data['type'], data['value'])
         return data['type']
@@ -204,7 +204,7 @@ class Message(BaseEvent):
 
     interface = 'sentry.interfaces.Message'
 
-    def to_string(self, event, data):
+    def to_string(self, data):
         return data['message'] % tuple(data.get('params', ()))
 
     def get_event_hash(self, message, params=(), **kwargs):
@@ -225,7 +225,7 @@ class Query(BaseEvent):
     """
     interface = 'sentry.interfaces.Query'
     
-    def to_string(self, event, data):
+    def to_string(self, data):
         return data['query']
     
     def get_event_hash(self, query, engine, **kwargs):
