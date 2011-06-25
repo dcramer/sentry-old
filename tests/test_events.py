@@ -204,6 +204,12 @@ class SentryTest(BaseTest):
 
         self.assertEquals(event.type, 'sentry.events.Message')
         self.assertEquals(event.time_spent, 0)
+        self.assertTrue('sentry.interfaces.Message' in event.data)
+        event_data = event.data['sentry.interfaces.Message']
+        self.assertTrue('message' in event_data)
+        self.assertEquals(event_data['message'], 'foo')
+        self.assertTrue('params' in event_data)
+        self.assertEquals(event_data['params'], [])
 
     def test_query_event(self):
         event_id = capture('Query', query='SELECT * FROM table', engine='psycopg2', time_spent=36)

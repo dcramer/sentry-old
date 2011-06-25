@@ -6,7 +6,7 @@ from sentry.client import get_client
 from sentry.models import Event
 
 class LoggingTest(BaseTest):
-    def test_logging_client(self):
+    def test_simple(self):
         client = get_client('sentry.client.logging.LoggingSentryClient')
         
         _foo = {'': None}
