@@ -197,7 +197,7 @@ class SentryClient(object):
         )
         event.set_meta(**data)
 
-        event_message = handler.to_string(event, data[handler.interface])
+        event_message = handler.to_string(data[handler.interface])
 
         group, created = Group.objects.get_or_create(
             type=event_type,
