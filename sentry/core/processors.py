@@ -20,7 +20,6 @@ from pprint import pprint
 def sanitize_passwords_processor(data):
     """ Asterisk out passwords from password fields in frames.
     """
-    print data
     if 'sentry.interfaces.Exception' in data:
         if 'frames' in data['sentry.interfaces.Exception']:
             for frame in data['sentry.interfaces.Exception']['frames']:

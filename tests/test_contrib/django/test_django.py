@@ -1,4 +1,4 @@
-from .. import BaseTest
+from ... import BaseTest
 
 from django.conf import settings
 
@@ -28,7 +28,8 @@ if not settings.configured:
             'sentry',
             'sentry.client.django',
         ],
-        ROOT_URLCONF='',
+        TEMPLATE_DIRS = (join(dirname(__file__), 'bad_templates'),),
+        ROOT_URLCONF='tests.test_contrib.django.urls',
         DEBUG=False,
         SITE_ID=1,
         BROKER_HOST="localhost",
@@ -43,7 +44,7 @@ if not settings.configured:
     import djcelery
     djcelery.setup_loader()
 
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from sentry.contrib.django.models import sentry_exception_handler
 from sentry.models import Event
 
@@ -78,6 +79,7 @@ class DjangoTest(BaseTest):
         self.assertTrue('lineno' in frame)
         self.assertTrue(frame['lineno'] > 0)
         self.assertTrue('module' in frame)
-        self.assertEquals(frame['module'], 'tests.test_contrib.test_django')
+        self.assertEquals(frame['module'], 'tests.test_contrib.django.test_django')
         self.assertTrue('id' in frame)
         self.assertTrue('filename' in frame)
+
