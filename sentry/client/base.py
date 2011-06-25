@@ -16,7 +16,7 @@ from sentry.utils import get_versions, transform
 from sentry.utils.api import get_mac_signature, get_auth_header
 from sentry.models import Group, Event
 
-class EventProxyCache(dict):
+class ModuleProxyCache(dict):
     def __missing__(self, key):
         module, class_name = key.rsplit('.', 1)
 
@@ -26,23 +26,10 @@ class EventProxyCache(dict):
         
         return handler
 
-class HttpInterface(object):
-    def __init__(self, url, method, data={}, **kwargs):
-        self.url = url
-        self.method = method
-        self.data = data
-    
-    def serialize(self):
-        return {
-            'url': self.url,
-            'method': self.method,
-            'data': self.data,
-        }
-
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('sentry.errors')
-        self.event_cache = EventProxyCache()
+        self.module_cache = ModuleProxyCache()
 
     def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None,
                 extra={}, culprit=None, http={}, **kwargs):
@@ -55,7 +42,7 @@ class SentryClient(object):
             # Assume it's a builtin
             event_type = 'sentry.events.%s' % event_type
 
-        handler = self.event_cache[event_type]()
+        handler = self.module_cache[event_type]()
 
         result = handler.capture(**kwargs)
 
@@ -67,8 +54,15 @@ class SentryClient(object):
         if not culprit:
             culprit = result.get('culprit')
         
-        if http:
-            data['interface:http'] = HttpInterface(**http).serialize()
+        for k, v in kwargs.iteritems():
+            if k.startswith('interface:'):
+                interface_name = k.split('interface:', 1)[1]
+                if '.' not in interface_name:
+                    # Assume it's a builtin
+                    interface_name = 'sentry.interfaces.%s' % interface_name
+
+                interface = self.module_cache[interface_name]
+                data[k] = interface(**v).serialize()
         
         tags.append(('server', app.config['NAME']))
 
