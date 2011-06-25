@@ -32,9 +32,33 @@ class SentryClient(object):
         self.module_cache = ModuleProxyCache()
 
     def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None,
-                extra={}, culprit=None, http={}, **kwargs):
-        "Captures and processes an event and pipes it off to SentryClient.send."
-        # TODO: http should be some kind of pluggable interface so others can be added
+                extra={}, culprit=None, **kwargs):
+        """
+        Captures and processes an event and pipes it off to SentryClient.send.
+        
+        To use structured data (interfaces) with capture:
+        
+        >>> capture('Message', message='foo', data={
+        >>>     'sentry.core.interfaces.Http': {
+        >>>         'url': '...',
+        >>>         'data': {},
+        >>>         'querystring': '...',
+        >>>         'method': 'POST',
+        >>>     },
+        >>> })
+        
+        :param event_type: the module path to the Event class. Builtins can use shorthand class
+                           notation and exclude the full module path.
+        :param tags: a list of tuples (key, value) specifying additional tags for event
+        :param data: the data base, useful for specifying structured data interfaces. Any key which contains a '.'
+                     will be assumed to be a data interface.
+        :param date: the datetime of this event
+        :param time_spent: a float value representing the duration of the event
+        :param event_id: a 32-length unique string identifying this event
+        :param extra: a dictionary of additional standard metadata
+        :param culprit: a string representing the cause of this event (generally a path to a function)
+        :return: a 32-length string identifying this event
+        """
         if not date:
             date = datetime.datetime.now()
 
@@ -55,14 +79,11 @@ class SentryClient(object):
             culprit = result.get('culprit')
         
         for k, v in kwargs.iteritems():
-            if k.startswith('interface:'):
-                interface_name = k.split('interface:', 1)[1]
-                if '.' not in interface_name:
-                    # Assume it's a builtin
-                    interface_name = 'sentry.interfaces.%s' % interface_name
+            if '.' not in k:
+                continue
 
-                interface = self.module_cache[interface_name]
-                data[k] = interface(**v).serialize()
+            interface = self.module_cache[k]
+            data[k] = interface(**v).serialize()
         
         tags.append(('server', app.config['NAME']))
 

@@ -212,7 +212,7 @@ class Message(BaseEvent):
             'message': message,
             'params': params,
         }
-
+        
 class Query(BaseEvent):
     """
     Messages store the following metadata:
