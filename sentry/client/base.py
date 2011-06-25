@@ -137,11 +137,13 @@ class SentryClient(object):
         return event_id
 
     def store(self, event_type, tags, data, date, time_spent, event_id, **kwargs):
+        """
+        Saves a new event to the datastore.
+        """
         module, class_name = event_type.rsplit('.', 1)
 
         handler = getattr(__import__(module, {}, {}, [class_name], -1), class_name)()
 
-        # TODO: this should be generated from the TypeProcessor
         event_hash = hashlib.md5('|'.join(k or '' for k in handler.get_event_hash(**data['event']))).hexdigest()
 
         event = Event.objects.create(
