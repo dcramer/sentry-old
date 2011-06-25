@@ -20,16 +20,62 @@ from flask import request, abort
 
 @app.route('/api/store/', methods=['POST'])
 def store():
+    """
+    Accepts a gzipped JSON POST body.
+    
+    If ``PUBLIC_WRITES`` is truthy, the Authorization header is ignored.
+    
+    Format resembles the following:
+    
+    >>> {
+    >>>     "event_type": "Exception",
+    >>>     "tags": [ ["level", "error"], ["server", "sentry.local"] ],
+    >>>     "date": "2010-06-18T22:31:45",
+    >>>     "time_spent": 0.0,
+    >>>     "event_id": "452dfa92380f438f98159bb75b9469e5",
+    >>>     "data": {
+    >>>         "culprit": "path.to.function",
+    >>>         "version": ["module", "version string"],
+    >>>         "modules": {
+    >>>             "module": "version string"
+    >>>         },
+    >>>         "extra": {
+    >>>             "key": "value",
+    >>>         },
+    >>>         "sentry.interfaces.Http": {
+    >>>             "url": "http://example.com/foo/bar",
+    >>>             "method": "POST",
+    >>>             "querystring": "baz=bar&foo=baz",
+    >>>             "data": {
+    >>>                 "key": "value"
+    >>>             }
+    >>>         },
+    >>>         "sentry.interfaces.Exception": {
+    >>>             "type": "ValueError",
+    >>>             "value": "An example exception",
+    >>>             "frames": [
+    >>>                 {
+    >>>                     "filename": "/path/to/filename.py",
+    >>>                     "module": "path.to.module",
+    >>>                     "function": "function_name",
+    >>>                     "vars": {
+    >>>                         "key": "value"
+    >>>                     }
+    >>>                 }
+    >>>             ]
+    >>>         }
+    >>>     }
+    >>> }
+    """
     has_header = request.environ.get('AUTHORIZATION', '').startswith('Sentry')
     if not (app.config['PUBLIC_WRITES'] or has_header):
         abort(401,'Unauthorized')
 
     data = request.data
 
-    
     if has_header:
         auth_vars = parse_auth_header(request.META['AUTHORIZATION'])
-    
+
         signature = auth_vars.get('signature')
         timestamp = auth_vars.get('timestamp')
         nonce = auth_vars.get('nonce')
@@ -82,6 +128,6 @@ def store():
                 format = '%Y-%m-%dT%H:%M:%S'
             data['date'] = datetime.datetime.strptime(data['date'], format)
 
-    app.client.store(**data)
+    event, group = app.client.store(**data)
     
-    return ''
+    return event.pk

@@ -422,7 +422,10 @@ class DateTime(Field):
     def to_python(self, value=None):
         if value and not isinstance(value, datetime.datetime):
             # TODO: coerce this to a UTC datetime object
-            value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
+            if '.' in value:
+                value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
+            else:
+                value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')
         return value
 
 class List(Field):

@@ -69,8 +69,6 @@ class SentryClient(object):
         >>>     'extra': {
         >>>         'key': 'value',
         >>>     }
-        >>>     # defined data for event type
-        >>>     'event': ...
         >>> }
         
         :param event_type: the module path to the Event class. Builtins can use shorthand class
