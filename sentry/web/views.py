@@ -223,16 +223,11 @@ def group_details(group_id):
                 continue
             yield k, v
 
-    # Render our event's custom output
-    processor = last_event.get_processor()
-    event_html = Markup(processor.to_html(last_event, last_event.data.get('event')) or '')
-    
     return render_template('sentry/group/details.html', **{
         'page': 'details',
         'interface_list': filter(None, [Markup(i.to_html(last_event) or '') for i in last_event.get_interfaces()]),
         'group': group,
         'json_data': iter_data(last_event),
-        'event_html': event_html,
     })
 
 @login_required
@@ -260,16 +255,12 @@ def group_event_details(group_id, event_id):
                 continue
             yield k, v
 
-    # Render our event's custom output
-    processor = event.get_processor()
-    event_html = Markup(processor.to_html(event, event.data.get('event')))
-
     return render_template('sentry/group/event.html', **{
         'page': 'events',
         'json_data': iter_data(event),
         'group': group,
         'event': event,
-        'event_html': event_html,
+        'interface_list': filter(None, [Markup(i.to_html(event) or '') for i in event.get_interfaces()]),
     })
 
 @login_required
