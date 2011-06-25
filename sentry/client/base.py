@@ -39,8 +39,8 @@ class SentryClient(object):
         self.logger = logging.getLogger('sentry.errors')
         self.module_cache = ModuleProxyCache()
 
-    def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None,
-                extra={}, culprit=None, **kwargs):
+    def capture(self, event_type, tags=None, data=None, date=None, time_spent=None, event_id=None,
+                extra=None, culprit=None, **kwargs):
         """
         Captures and processes an event and pipes it off to SentryClient.send.
         
@@ -85,7 +85,13 @@ class SentryClient(object):
         :param culprit: a string representing the cause of this event (generally a path to a function)
         :return: a 32-length string identifying this event
         """
-        if not date:
+        if data is None:
+            data = {}
+        if tags is None:
+            tags = []
+        if extra is None:
+            extra = {}
+        if date is None:
             date = datetime.datetime.now()
 
         if '.' not in event_type:
@@ -104,7 +110,7 @@ class SentryClient(object):
         if not culprit:
             culprit = result.get('culprit')
         
-        for k, v in kwargs.iteritems():
+        for k, v in data.iteritems():
             if '.' not in k:
                 continue
 
