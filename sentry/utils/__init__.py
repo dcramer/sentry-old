@@ -6,6 +6,7 @@ sentry.utils
 :license: BSD, see LICENSE for more details.
 """
 
+import datetime
 import hashlib
 import logging
 import sys
@@ -90,6 +91,10 @@ def transform(value, stack=[], context=None):
         ret = type(value)(transform_rec(o) for o in value)
     elif isinstance(value, uuid.UUID):
         ret = repr(value)
+    elif isinstance(value, datetime.datetime):
+        ret = value.strftime('%Y-%m-%dT%H:%M:%S.%f')
+    elif isinstance(value, datetime.date):
+        ret = value.strftime('%Y-%m-%d')
     elif isinstance(value, dict):
         ret = dict((k, transform_rec(v)) for k, v in value.iteritems())
     elif isinstance(value, unicode):

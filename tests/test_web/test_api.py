@@ -2,7 +2,33 @@ from .. import BaseTest, with_settings
 
 import base64
 import simplejson
+from sentry import app
+from sentry.client.base import SentryClient
 from sentry.models import Event
+
+class InternalRemoteSentryClient(SentryClient):
+    def send_remote(self, url, data, headers=None):
+        if headers is None:
+            headers = {}
+        client = app.test_client()
+        return client.post(url, data=data, headers=headers)
+
+class StoreIntegrationTest(BaseTest):
+    @with_settings(PUBLIC_WRITES=True, REMOTES=['/api/store/'])
+    def test_client(self):
+        client = InternalRemoteSentryClient()
+        event_id = client.capture('Message', message='foo')
+        
+        event = Event.objects.get(event_id)
+
+        self.assertEquals(event.type, 'sentry.events.Message')
+        self.assertEquals(event.time_spent, 0)
+        self.assertTrue('sentry.interfaces.Message' in event.data)
+        event_data = event.data['sentry.interfaces.Message']
+        self.assertTrue('message' in event_data)
+        self.assertEquals(event_data['message'], 'foo')
+        self.assertTrue('params' in event_data)
+        self.assertEquals(event_data['params'], [])
 
 class StoreTest(BaseTest):
     @with_settings(PUBLIC_WRITES=True)

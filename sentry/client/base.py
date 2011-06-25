@@ -227,13 +227,15 @@ class SentryClient(object):
     def send(self, **kwargs):
         "Sends the message to the server."
         if app.config['REMOTES']:
+            if kwargs.get('date'):
+                kwargs['date'] = kwargs['date'].strftime('%Y-%m-%dT%H:%M:%S.%f')
             for url in app.config['REMOTES']:
                 message = base64.b64encode(simplejson.dumps(kwargs).encode('zlib'))
                 timestamp = time.time()
                 nonce = uuid.uuid4().hex
                 signature = get_mac_signature(app.config['KEY'], message, nonce, timestamp)
                 headers={
-                    'Authorization': get_auth_header(signature, timestamp, '%s/%s' % (self.__class__.__name__, sentry.VERSION)),
+                    'Authorization': get_auth_header(signature, timestamp, '%s/%s' % (self.__class__.__name__, sentry.VERSION), nonce),
                     'Content-Type': 'application/octet-stream',
                 }
                 
