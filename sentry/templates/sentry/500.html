@@ -1,0 +1,16 @@
+{% extends "sentry/layout.html" %}
+
+{% block title %}{{ gettext('Internal Server Error') }} | {{ super() }}{% endblock %}
+
+{% block heading %}{{ gettext('Internal Server Error') }}{% endblock %}
+
+{% block search %}{% endblock %}
+
+{% block content %}
+    <div id="body">
+        <div class="error-page">
+            <h2>{{ gettext('Internal Server Error') }}</h2>
+            <p>{{ gettext('There was an internal server error loading the page you requested.') }}</p>
+        </div>
+    </div>
+{% endblock %}

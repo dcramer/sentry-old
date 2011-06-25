@@ -176,7 +176,7 @@ img {
     background: #fff;
     max-width: 100%;
     overflow: hidden;
-    margin: 2em 0 2em 2em;
+    margin: 1em;
     border-radius: 5px;
     -moz-border-radius: 5px;
     -webkit-border-radius: 5px;
@@ -204,7 +204,7 @@ img {
 #sidebar {
     float: right;
     width: 300px;
-    margin: 0em 2em 2em 1.5em;
+    margin: 0em 1em 1em 0;
     background: inherit;
     overflow: hidden;
 }
@@ -655,18 +655,22 @@ dl.flat dd {
     background: inherit;
 }
 
-.login-area {
-    width: 300px;
+.error-page, .login-area {
+    width: 500px;
     margin: 50px auto;
-    background: #eee;
+    background: #fff;
     border: 1px solid #ddd;
-    padding: 10px;
+    padding: 1em 1em 0;
+    -moz-border-radius: 8px;
+    -webkit-border-radius: 8px;
+    border-radius: 8px;
 }
 .login-area p {
     margin-bottom: 10px;
 }
 .login-form table { width: 295px; }
 .login-form td { padding: 2px 0; }
+
 form table {
     border: 0;
     margin: 1em 0;
