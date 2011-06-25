@@ -23,6 +23,7 @@ class BaseEvent(object):
     
     def capture(self, **kwargs):
         return {
+            'culprit': None,
             'data': self.get_data(**kwargs),
             'tags': self.get_tags(**kwargs),
         }
@@ -47,16 +48,10 @@ class Exception(BaseEvent):
         })
 
     def get_event_hash(self, value, type, frames, **kwargs):
-        # Need to add in the frames without line numbers
+        # TODO: Need to add in the frames without line numbers
         return [value, type]
 
     def capture(self, exc_info=None, **kwargs):
-        def contains(iterator, value):
-            for k in iterator:
-                if value.startswith(k):
-                    return True
-            return False
-
         if exc_info is None:
             exc_info = sys.exc_info()
         
@@ -64,33 +59,7 @@ class Exception(BaseEvent):
         
         tags = [('level', 'error')]
         
-        if app.config['INCLUDE_PATHS']:
-            modules = app.config['INCLUDE_PATHS']
-        else:
-            modules = []
-        
-        # We iterate through each frame looking for an app in INSTALLED_APPS
-        # When one is found, we mark it as last "best guess" (best_guess) and then
-        # check it against SENTRY_EXCLUDE_PATHS. If it isnt listed, then we
-        # use this option. If nothing is found, we use the "best guess".
-        best_guess = None
-        view = None
-        for tb in self._iter_tb(exc_info[2]):
-            frame = tb.tb_frame
-            try:
-                view = '.'.join([frame.f_globals['__name__'], frame.f_code.co_name])
-            except:
-                continue
-            if contains(modules, view):
-                if not (contains(app.config['EXCLUDE_PATHS'], view) and best_guess):
-                    best_guess = view
-            elif best_guess:
-                break
-        if best_guess:
-            view = best_guess
-
-        if view:
-            tags.append(('culprit', view))
+        culprit = self._get_culprit(exc_info[2])
 
         if hasattr(exc_type, '__class__'):
             exc_module = exc_type.__class__.__module__
@@ -114,6 +83,7 @@ class Exception(BaseEvent):
         #     result['tags'].append(('template', origin.loadname))
 
         return {
+            'culprit': culprit,
             'data': result,
             'tags': tags,
         }
@@ -167,6 +137,37 @@ class Exception(BaseEvent):
         post_context = [line.strip('\n') for line in source[lineno+1:upper_bound]]
 
         return lower_bound, pre_context, context_line, post_context
+
+    def _get_culprit(self, traceback):
+        # We iterate through each frame looking for a deterministic culprit
+        # When one is found, we mark it as last "best guess" (best_guess) and then
+        # check it against SENTRY_EXCLUDE_PATHS. If it isnt listed, then we
+        # use this option. If nothing is found, we use the "best guess".
+        def contains(iterator, value):
+            for k in iterator:
+                if value.startswith(k):
+                    return True
+            return False
+
+        if app.config['INCLUDE_PATHS']:
+            modules = app.config['INCLUDE_PATHS']
+        else:
+            modules = []
+
+        best_guess = None
+        for tb in self._iter_tb(traceback):
+            frame = tb.tb_frame
+            try:
+                culprit = '.'.join([frame.f_globals['__name__'], frame.f_code.co_name])
+            except:
+                continue
+            if contains(modules, culprit):
+                if not (contains(app.config['EXCLUDE_PATHS'], culprit) and best_guess):
+                    best_guess = culprit
+            elif best_guess:
+                break
+    
+        return best_guess
 
     def _get_traceback_frames(self, tb):
         frames = []

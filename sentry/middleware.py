@@ -17,8 +17,12 @@ class WSGIErrorMiddleware(object):
             raise
 
     def handle_exception(self, exc_info, environ):
-        url = get_current_url(environ)
-        event_id = capture('Exception', exc_info=exc_info, tags=[('url', url)], extra={
-            'environ': environ,
-        })
+        event_id = capture('Exception',
+            exc_info=exc_info,
+            http={
+                'method': environ.get('REQUEST_METHOD'),
+                'url': get_current_url(environ, strip_querystring=True),
+                'querystring': environ.get('QUERY_STRING'),
+            },
+        )
         return event_id

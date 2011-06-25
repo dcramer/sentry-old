@@ -26,13 +26,28 @@ class EventProxyCache(dict):
         
         return handler
 
+class HttpInterface(object):
+    def __init__(self, url, method, data={}, **kwargs):
+        self.url = url
+        self.method = method
+        self.data = data
+    
+    def serialize(self):
+        return {
+            'url': self.url,
+            'method': self.method,
+            'data': self.data,
+        }
+
 class SentryClient(object):
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('sentry.errors')
         self.event_cache = EventProxyCache()
 
-    def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None, extra={}, **kwargs):
+    def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None,
+                extra={}, culprit=None, http={}, **kwargs):
         "Captures and processes an event and pipes it off to SentryClient.send."
+        # TODO: http should be some kind of pluggable interface so others can be added
         if not date:
             date = datetime.datetime.now()
 
@@ -49,19 +64,23 @@ class SentryClient(object):
         data['extra'] = extra
         data['event'] = result['data']
         
+        if not culprit:
+            culprit = result.get('culprit')
+        
+        if http:
+            data['interface:http'] = HttpInterface(**http).serialize()
+        
         tags.append(('server', app.config['NAME']))
 
         versions = get_versions()
 
-        if 'sentry' not in data:
-            data['sentry'] = {}
+        data['modules'] = versions
 
-        data['sentry']['versions'] = versions
+        if culprit:
+            data['culprit'] = culprit
 
-        # TODO: view should probably be passable via kwargs
-        if data['sentry'].get('culprit'):
             # get list of modules from right to left
-            parts = data['sentry']['culprit'].split('.')
+            parts = culprit.split('.')
             module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
             version = None
             module = None
@@ -72,10 +91,7 @@ class SentryClient(object):
 
             # store our "best guess" for application version
             if version:
-                data['sentry'].update({
-                    'version': version,
-                    'module': module,
-                })
+                data['version'] = (module, version),
 
         # TODO: Cache should be handled by the db backend by default (as we expect a fast access backend)
         # if app.config['THRASHING_TIMEOUT'] and app.config['THRASHING_LIMIT']:

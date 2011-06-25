@@ -19,6 +19,10 @@
         <dd>{{ group.first_seen|timesince }}</dd>
         <dt>Last Seen:</dt>
         <dd>{{ group.last_seen|timesince }}</dd>
+        {% if group.culprit %}
+            <dt>Culprit:</dt>
+            <dd>{{ group.culprit }}</dd>
+        {% endif %}
         {% for k, v in group.tags %}
             <dt>{{ k|title }}</dt>
             <dd>{{ v|maybe_link }}</dd>

@@ -106,7 +106,11 @@ This is a rough list of features/APIs which need to be completed (*some* of this
 
 * Runtime validation of settings (ensure events and filters are valid importables, etc.)
 
-* Support metadata in capture API
+* Exception event handler needs to have an intelligent hash
+
+* Interface API for extending data formats
+
+  * Need some kind of renderer
 
 * Filter API
 
