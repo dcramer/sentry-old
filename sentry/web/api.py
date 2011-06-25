@@ -75,7 +75,7 @@ def store():
 
     if has_header:
         auth_vars = parse_auth_header(request.META['AUTHORIZATION'])
-
+    
         signature = auth_vars.get('signature')
         timestamp = auth_vars.get('timestamp')
         nonce = auth_vars.get('nonce')

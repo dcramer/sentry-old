@@ -162,6 +162,12 @@ class SentryClient(object):
         # create ID client-side so that it can be passed to application
         event_id = uuid.uuid4().hex
 
+        # Run the data through processors
+
+        PROCESSORS = app.config['PROCESSORS']
+        for processor in PROCESSORS:
+            data.update(self.module_cache[processor](data))
+
         # Make sure all data is coerced
         data = transform(data)
 

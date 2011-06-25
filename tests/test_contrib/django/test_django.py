@@ -1,6 +1,7 @@
-from .. import BaseTest
+from ... import BaseTest
 
 from django.conf import settings
+from os.path import join, dirname
 
 if not settings.configured:
     settings.configure(
@@ -25,10 +26,11 @@ if not settings.configured:
 
             'djcelery', # celery client
 
-            'sentry',
-            'sentry.client.django',
+            # 'sentry',
+            'sentry.contrib.django',
         ],
-        ROOT_URLCONF='',
+        TEMPLATE_DIRS = (join(dirname(__file__), 'bad_templates'),),
+        ROOT_URLCONF='tests.test_contrib.django.urls',
         DEBUG=False,
         SITE_ID=1,
         BROKER_HOST="localhost",
@@ -43,7 +45,7 @@ if not settings.configured:
     import djcelery
     djcelery.setup_loader()
 
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from sentry.contrib.django.models import sentry_exception_handler
 from sentry.models import Event
 
@@ -78,6 +80,28 @@ class DjangoTest(BaseTest):
         self.assertTrue('lineno' in frame)
         self.assertTrue(frame['lineno'] > 0)
         self.assertTrue('module' in frame)
-        self.assertEquals(frame['module'], 'tests.test_contrib.test_django')
+        self.assertEquals(frame['module'], 'tests.test_contrib.django.test_django')
         self.assertTrue('id' in frame)
         self.assertTrue('filename' in frame)
+
+    def test_django_testclient(self):
+        from django.test import Client
+        from django.template import TemplateSyntaxError
+        c = Client()
+
+        try:
+            response = c.get("/no_such_view/")
+        except TemplateSyntaxError:
+            pass
+
+        event = Event.objects.all()[0]
+        data = event.data
+
+        self.assertTrue('sentry.interfaces.Exception' in data)
+        event_data = data['sentry.interfaces.Exception']
+        self.assertEquals(len(event_data['frames']), 14)
+
+        frame = event_data['frames'][13]
+
+        self.assertTrue('type' in event_data)
+        self.assertEquals(event_data['type'], 'TemplateSyntaxError')

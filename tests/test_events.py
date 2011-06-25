@@ -295,3 +295,27 @@ class SentryTest(BaseTest):
         self.assertEquals(frame['module'], 'tests.test_events')
         self.assertTrue('id' in frame)
         self.assertTrue('filename' in frame)
+
+    def test_context_processors(self):
+        try:
+            username = 'random_user'
+            password = 'secret42'
+            raise ValueError('foo bar')
+        except:
+            exc_info = sys.exc_info()
+
+        # We raise a second event to ensure we actually reference
+        # the first event
+        try:
+            raise SyntaxError('baz')
+        except:
+            pass
+
+        # Exception pulls in sys.exc_info()
+        # by default
+        event_id = capture('Exception')
+
+        event = Event.objects.get(event_id)
+        event_data = event.data['sentry.interfaces.Exception']
+        frame = event_data['frames'][0]
+        self.assertEquals(frame['vars']['password'], '********')
