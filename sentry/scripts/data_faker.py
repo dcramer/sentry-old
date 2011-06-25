@@ -8,6 +8,7 @@ sentry.scripts.data_faker
 """
 
 from sentry import VERSION, app, capture
+from sentry.core.interfaces import Http
 
 import os.path
 import random
@@ -35,9 +36,15 @@ def main():
         'Does wood sink in water?',
         'The wise Sir Bedemir was the first to join King Arthur\'s knights, but other illustrious names were soon to follow',
     ]
+    urls = [
+        'http://example.com'
+        'http://example.com/foo/bar/'
+        'http://example.com/foo/bar/?baz=biz'
+    ]
     sql_queries = ['SELECT * FROM table', 'INSERT INTO FOO (a, b, c) VALUES (1, 2, 3)', 'TRUNCATE TABLE baz']
     sql_engines = ['psycopg2', 'mysqldb', 'oracle']
-
+    http_methods = Http.METHODS
+    
     for n in xrange(options.num):
         x = random.randint(0, 2)
         if x == 0:
@@ -55,6 +62,14 @@ def main():
         elif x == 2:
             event = 'Query'
             kwargs = {'query': sql_queries[n % len(sql_queries)], 'engine': sql_engines[n % len(sql_engines)]}
+
+        if random.randint(0, 1) == 1:
+            kwargs['data'] = {
+                'sentry.core.interfaces.Http': {
+                    'url': urls[n % len(urls)],
+                    'method': http_methods[n % len(http_methods)],
+                }
+            }
 
         capture(event, **kwargs)
 
