@@ -8,13 +8,33 @@ sentry.core.interfaces
 
 import urlparse
 
+# unserialization concept is based on pickle
+class _EmptyClass(object):
+    pass
+
+def unserialize(klass, data):
+    value = _EmptyClass()
+    value.__class__ = klass
+    value.__setstate__(data)
+    return value
+
 class Interface(object):
     """
     An interface is a structured represntation of data, which may
     render differently than the default ``extra`` metadata in an event.
     """
+
+    def __setstate__(self, data):
+        self.__dict__.update(self.unserialize(data))
+
+    def __getstate__(self):
+        return self.serialize()
+
+    def unserialize(self, data):
+        return data
+        
     def serialize(self):
-        raise NotImplementedError
+        return {}
 
 class Http(Interface):
     # methods as defined by http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html

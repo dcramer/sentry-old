@@ -2,7 +2,7 @@ from .. import BaseTest
 
 from sentry import capture
 from sentry.models import Event
-from sentry.core.interfaces import Http
+from sentry.core.interfaces import Http, unserialize
 
 class HttpIntegrationTest(BaseTest):
     def test_create(self):
@@ -29,9 +29,33 @@ class HttpIntegrationTest(BaseTest):
         self.assertEquals(result['querystring'], 'bar=baz')
         
 class HttpTest(BaseTest):
+    def test_unserialize(self):
+        http = unserialize(Http, {
+            'url': 'http://example.com/foo/',
+            'method': 'GET',
+            'data': {},
+            'querystring': 'bar=baz',
+        })
+        self.assertEquals(http.url, 'http://example.com/foo/')
+        self.assertEquals(http.method, 'GET')
+        self.assertEquals(http.data, {})
+        self.assertEquals(http.querystring, 'bar=baz')
+
     def test_serialize(self):
         http = Http('http://example.com/foo/', 'GET', {}, 'bar=baz')
         result = http.serialize()
+        self.assertTrue('url' in result, result)
+        self.assertEquals(result['url'], 'http://example.com/foo/')
+        self.assertTrue('method' in result, result)
+        self.assertEquals(result['method'], 'GET')
+        self.assertTrue('data' in result, result)
+        self.assertEquals(result['data'], {})
+        self.assertTrue('querystring' in result, result)
+        self.assertEquals(result['querystring'], 'bar=baz')
+
+    def test_serialize_and_unserialize(self):
+        http = Http('http://example.com/foo/', 'GET', {}, 'bar=baz')
+        result = unserialize(Http, http.serialize()).serialize()
         self.assertTrue('url' in result, result)
         self.assertEquals(result['url'], 'http://example.com/foo/')
         self.assertTrue('method' in result, result)
