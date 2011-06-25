@@ -1,5 +1,5 @@
 """
-Sentry
+sentry
 ~~~~~~
 
 TODO: Can we merge data + tags?
@@ -81,6 +81,9 @@ Processor Ideas:
 - General logging integration (as well as LogBook)
 - Query log processing for MySQL and PGSQL
 
+
+:copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
 """
 
 try:

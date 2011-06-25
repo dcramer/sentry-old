@@ -1,3 +1,11 @@
+"""
+sentry.utils.encoding
+~~~~~~~~~~~~~~~~~~~~~
+
+:copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
+"""
+
 # Adopted from Django
 import types
 import datetime

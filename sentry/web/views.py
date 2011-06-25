@@ -1,3 +1,11 @@
+"""
+sentry.web.views
+~~~~~~~~~~~~~~~~
+
+:copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
+"""
+
 # TODO: this needs to be entirely flask
 
 import datetime

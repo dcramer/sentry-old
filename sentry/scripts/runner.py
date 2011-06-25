@@ -1,4 +1,12 @@
 #!/usr/bin/env python
+"""
+sentry.scripts.runner
+~~~~~~~~~~~~~~~~~~~~~
+
+:copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
+"""
+
 import eventlet
 import os
 import os.path

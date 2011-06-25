@@ -1,3 +1,11 @@
+"""
+sentry.core.plugins
+~~~~~~~~~~~~~~~~~~~
+
+:copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
+"""
+
 # Based on http://martyalchin.com/2008/jan/10/simple-plugin-framework/
 
 from flask import url_for
