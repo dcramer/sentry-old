@@ -67,19 +67,6 @@
                 <pre id="full-message">{{ group.message }}</pre>
             {% endif %}
             
-            <table class="meta">
-              <tr>
-                <th>Request Method:</th>
-                <td>TODO</td>
-              </tr>
-              {% if request.path_info %}
-              <tr>
-                <th>Request URL:</th>
-                <td><a href="{{ request.build_absolute_uri|escape }}">{{ request.build_absolute_uri|escape }}</a></td>
-              </tr>
-              {% endif %}
-            </table>
-            
             {{ event_html }}
             
             {% with chart_data=group|chart_data() %}
