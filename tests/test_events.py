@@ -182,6 +182,21 @@ class SentryTest(BaseTest):
 
         self.assertEquals(len(groups), 2)
 
+    def test_tags(self):
+        event_id = capture('Message', message='foo', tags=[('level', 'info')])
+
+        event = Event.objects.get(event_id)
+
+        self.assertEquals(len(event.tags), 2, event.tags)
+
+        tags = dict(event.tags)
+
+        self.assertTrue('level' in tags)
+        self.assertEquals(tags['level'], 'info')
+        
+        self.assertTrue('server' in tags)
+        self.assertEquals(tags['server'], app.config['NAME'])
+
     def test_message_event(self):
         event_id = capture('Message', message='foo')
 
