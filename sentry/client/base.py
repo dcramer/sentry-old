@@ -47,6 +47,24 @@ class SentryClient(object):
         >>>     },
         >>> })
         
+        The finalized ``data`` structure contains the following (some optional) builtin values:
+        
+        >>> {
+        >>>     'culprit': 'full.module.name', # or /arbitrary/path
+        >>>     # the culprit version information
+        >>>     'version': ('full.module.name', 'version string'),
+        >>>     # all detectable installed modules
+        >>>     'modules': {
+        >>>         'full.module.name': 'version string',
+        >>>     },
+        >>>     # arbitrary data provided by user
+        >>>     'extra': {
+        >>>         'key': 'value',
+        >>>     }
+        >>>     # defined data for event type
+        >>>     'event': ...
+        >>> }
+        
         :param event_type: the module path to the Event class. Builtins can use shorthand class
                            notation and exclude the full module path.
         :param tags: a list of tuples (key, value) specifying additional tags for event
