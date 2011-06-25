@@ -1,5 +1,6 @@
 from django.conf.urls.defaults import *
+from django.views.generic.simple import redirect_to
 
 urlpatterns = patterns('',
-    #(r'^get_view/$', views.get_view),
+    (r'^example/$', redirect_to, {'url': 'http://www.example.com'}),
 )
