@@ -30,7 +30,7 @@ def main():
     exceptions = [ValueError, SyntaxError, KeyError, IndexError, OSError]
     messages = [
         'Old Man, sorry.  What knight live in that castle over there?',
-        'You fight with the strength of many men, Sir knight.'
+        'You fight with the strength of many men, Sir knight.',
         'A witch!  A witch!  A witch!  We\'ve got a witch!  A witch!',
         'Does wood sink in water?',
         'The wise Sir Bedemir was the first to join King Arthur\'s knights, but other illustrious names were soon to follow',
