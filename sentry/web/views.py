@@ -218,7 +218,7 @@ def group_details(group_id):
     last_event = group.get_relations(Event, limit=1)[0]
 
     def iter_data(obj):
-        for k, v in obj.data['extra'].iteritems():
+        for k, v in obj.data.get('extra', {}).iteritems():
             if k.startswith('_') or k in ['url']:
                 continue
             yield k, v
