@@ -111,8 +111,16 @@ This is a rough list of features/APIs which need to be completed (*some* of this
 * Interface API for extending data formats
 
   * Need some kind of renderer
+ 
+* Processor API (for post-processing messages before they get sent to the server)
+
+  * Should be an ordered tuple specified in config
+  
+  * Should be able to manipulate all of ``data`` (so you can clean messages, or add additional metadata)
 
 * Filter API
+
+  * Needs to handle sorting+filtering with denormalized indexes
 
 * Plugin API
 
