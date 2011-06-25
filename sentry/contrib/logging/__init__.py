@@ -14,4 +14,8 @@ from sentry import capture
 
 class SentryHandler(logging.Handler):
     def emit(self, record):
-        return capture('Message', message=record.msg, params=record.args)
+        tags = (('level', record.levelname.lower()), ('logger', record.name))
+        
+        if record.exc_info:
+            return capture('Exception', exc_info=record.exc_info, tags=tags)
+        return capture('Message', message=record.msg, tags=tags)

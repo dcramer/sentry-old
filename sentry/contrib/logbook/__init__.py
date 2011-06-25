@@ -10,11 +10,9 @@ import logbook
 
 from sentry import capture
 
-class SentryLogbookHandler(logbook.Handler):
+class SentryHandler(logbook.Handler):
     def emit(self, record):
-
-        # TODO: level should be a string
-        tags = (('level', record.level), ('logger', record.channel))
+        tags = (('level', logbook.get_level_name(record.level).lower()), ('logger', record.channel))
         
         if record.exc_info:
             return capture('Exception', exc_info=record.exc_info, tags=tags)
