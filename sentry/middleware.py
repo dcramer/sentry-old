@@ -1,6 +1,7 @@
 import sys
 
 from sentry import capture
+from werkzeug.wsgi import get_current_url
 
 class WSGIErrorMiddleware(object):
     def __init__(self, application):
@@ -16,7 +17,8 @@ class WSGIErrorMiddleware(object):
             raise
 
     def handle_exception(self, exc_info, environ):
-        event_id = capture('Exception', exc_info=exc_info, extra={
+        url = get_current_url(environ)
+        event_id = capture('Exception', exc_info=exc_info, tags=[('url', url)], extra={
             'environ': environ,
         })
         return event_id

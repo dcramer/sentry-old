@@ -210,7 +210,7 @@ def group_details(group_id):
     last_event = group.get_relations(Event, limit=1)[0]
 
     def iter_data(obj):
-        for k, v in obj.data.iteritems():
+        for k, v in obj.data['extra'].iteritems():
             if k.startswith('_') or k in ['url']:
                 continue
             yield k, v
@@ -246,7 +246,7 @@ def group_event_details(group_id, event_id):
     event = get_object_or_404(Event, pk=event_id)
 
     def iter_data(obj):
-        for k, v in obj.data.iteritems():
+        for k, v in obj.data['extra'].iteritems():
             if k.startswith('_') or k in ['url']:
                 continue
             yield k, v

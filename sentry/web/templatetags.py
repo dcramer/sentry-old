@@ -1,9 +1,18 @@
-from flaskext.babel import ngettext, gettext
 from sentry import app
 #from sentry.plugins import GroupActionProvider
 
+from flaskext.babel import ngettext, gettext
+from jinja2 import Markup, escape
+
 import datetime
 import simplejson
+
+@app.template_filter()
+def maybe_link(value):
+    if value.startswith('http') and '://' in value:
+        value = escape(value)
+        return Markup(u'<a href="%s">%s</a>' % (value, value))
+    return value
 
 @app.template_filter()
 def as_sorted(value):

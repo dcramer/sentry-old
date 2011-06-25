@@ -21,7 +21,7 @@
         <dd>{{ group.last_seen|timesince }}</dd>
         {% for k, v in group.tags %}
             <dt>{{ k|title }}</dt>
-            <dd>{{ v }}</dd>
+            <dd>{{ v|maybe_link }}</dd>
         {% endfor %}
     </dl>
         
@@ -182,7 +182,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for k_, v_ in v.iteritems|as_sorted %}
+                                            {% for k_, v_ in v.iteritems()|as_sorted %}
                                             <tr>
                                                 <td>{{ k_ }}</td>
                                                 <td class="code"><pre>{{ v_|pprint }}</pre></td>

@@ -49,15 +49,6 @@ class SentryClient(object):
         data['extra'] = extra
         data['event'] = result['data']
         
-        # if request:
-        #     data.update(dict(
-        #         s_meta=request.META,
-        #         s_post=request.POST,
-        #         s_get=request.GET,
-        #         s_cookies=request.COOKIES,
-        #     ))
-        #     tags.append(('url', request.build_absolute_uri()))
-
         tags.append(('server', app.config['NAME']))
 
         versions = get_versions()

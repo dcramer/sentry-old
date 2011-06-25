@@ -91,7 +91,6 @@ class Exception(BaseEvent):
 
         if view:
             tags.append(('culprit', view))
-        
 
         if hasattr(exc_type, '__class__'):
             exc_module = exc_type.__class__.__module__
