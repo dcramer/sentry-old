@@ -16,6 +16,8 @@ except ImportError:
 tests_require = [
     'nose',
     'unittest2',
+    'Django>=1.2,<1.4',
+    'django-celery',
 ]
 
 setup(

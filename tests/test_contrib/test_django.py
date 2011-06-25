@@ -1,7 +1,6 @@
 from .. import BaseTest
 
 from django.conf import settings
-from os.path import dirname, join
 
 if not settings.configured:
     settings.configure(
@@ -24,9 +23,7 @@ if not settings.configured:
             # Included to fix Disqus' test Django which solves IntegrityMessage case
             'django.contrib.contenttypes',
 
-            'south',
             'djcelery', # celery client
-            'haystack',
 
             'sentry',
             'sentry.client.django',
@@ -42,12 +39,6 @@ if not settings.configured:
         CELERY_ALWAYS_EAGER=True,
         SENTRY_THRASHING_LIMIT=0,
         TEMPLATE_DEBUG=True,
-        HAYSTACK_SITECONF='sentry.search_indexes',
-        HAYSTACK_SEARCH_ENGINE='whoosh',
-        SENTRY_SEARCH_ENGINE='whoosh',
-        SENTRY_SEARCH_OPTIONS={
-            'path': join(dirname(__file__), 'sentry_index'),
-        },
     )
     import djcelery
     djcelery.setup_loader()
