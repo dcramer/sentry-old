@@ -61,17 +61,16 @@ def store():
     # XXX: ensure keys are coerced to strings
     data = dict((str(k), v) for k, v in data.iteritems())
 
-    if 'timestamp' in data:
-        if is_float(data['timestamp']):
-            data['timestamp'] = datetime.datetime.fromtimestamp(float(data['timestamp']))
+    if 'date' in data:
+        if is_float(data['date']):
+            data['date'] = datetime.datetime.fromtimestamp(float(data['date']))
         else:
-            if '.' in data['timestamp']:
+            if '.' in data['date']:
                 format = '%Y-%m-%dT%H:%M:%S.%f'
             else:
                 format = '%Y-%m-%dT%H:%M:%S'
-            data['timestamp'] = datetime.datetime.strptime(data['timestamp'], format)
+            data['date'] = datetime.datetime.strptime(data['date'], format)
 
-    # TODO
-    store()
+    app.client.store(**data)
     
     return ''
