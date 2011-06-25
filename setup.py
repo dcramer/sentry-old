@@ -4,6 +4,9 @@ Sentry
 ~~~~~~
 
 Sentry is a real-time logging platform.
+
+:copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
 """
 
 try:
@@ -53,7 +56,6 @@ setup(
         ],
     },
     classifiers=[
-        'Framework :: Django',
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'Operating System :: OS Independent',
