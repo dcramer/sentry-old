@@ -78,13 +78,7 @@ class QuerySet(object):
             desc = False
             index = self.index
 
-
-        if self.filter:
-            data = [(pk, app.db.get_data(self.model, pk)) for pk in app.db.list_by_cindex(self.model, **to_db(self.model, self.filter))]
-        else:
-            data = app.db.list(self.model, index, start, num, desc)
-
-        results = [self.model(pk, **data) for pk, data in data]
+        results = self._get_results(start, num, index, desc)
         
         if is_slice:
             return results
@@ -101,6 +95,14 @@ class QuerySet(object):
     def __iter__(self):
         for r in self[0:-1]:
             yield r
+
+    def _get_results(self, start, num, index, desc=False):
+        if self.filter:
+            data = [(pk, app.db.get_data(self.model, pk)) for pk in app.db.list_by_cindex(self.model, **to_db(self.model, self.filter))]
+        else:
+            data = app.db.list(self.model, index, start, num, desc)
+
+        return [self.model(pk, **data) for pk, data in data]
 
     def order_by(self, index):
         assert not self.filter
