@@ -14,7 +14,7 @@ from sentry import app
 import sentry
 from sentry.utils import get_versions, transform
 from sentry.utils.api import get_mac_signature, get_auth_header
-from sentry.models import Tag, Group, Event
+from sentry.models import Group, Event
 
 class EventProxyCache(dict):
     def __missing__(self, key):
@@ -31,7 +31,7 @@ class SentryClient(object):
         self.logger = logging.getLogger('sentry.errors')
         self.event_cache = EventProxyCache()
 
-    def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None, **kwargs):
+    def capture(self, event_type, tags=[], data={}, date=None, time_spent=None, event_id=None, extra={}, **kwargs):
         "Captures and processes an event and pipes it off to SentryClient.send."
         if not date:
             date = datetime.datetime.now()
@@ -46,7 +46,8 @@ class SentryClient(object):
 
         tags = list(tags) + result['tags']
 
-        data['__event__'] = result['data']
+        data['extra'] = extra
+        data['event'] = result['data']
         
         # if request:
         #     data.update(dict(
@@ -61,15 +62,15 @@ class SentryClient(object):
 
         versions = get_versions()
 
-        if '__sentry__' not in data:
-            data['__sentry__'] = {}
+        if 'sentry' not in data:
+            data['sentry'] = {}
 
-        data['__sentry__']['versions'] = versions
+        data['sentry']['versions'] = versions
 
         # TODO: view should probably be passable via kwargs
-        if data['__sentry__'].get('culprit'):
+        if data['sentry'].get('culprit'):
             # get list of modules from right to left
-            parts = data['__sentry__']['culprit'].split('.')
+            parts = data['sentry']['culprit'].split('.')
             module_list = ['.'.join(parts[:idx]) for idx in xrange(1, len(parts)+1)][::-1]
             version = None
             module = None
@@ -80,7 +81,7 @@ class SentryClient(object):
 
             # store our "best guess" for application version
             if version:
-                data['__sentry__'].update({
+                data['sentry'].update({
                     'version': version,
                     'module': module,
                 })
@@ -119,7 +120,7 @@ class SentryClient(object):
         handler = getattr(__import__(module, {}, {}, [class_name], -1), class_name)()
 
         # TODO: this should be generated from the TypeProcessor
-        event_hash = hashlib.md5('|'.join(k or '' for k in handler.get_event_hash(**data['__event__']))).hexdigest()
+        event_hash = hashlib.md5('|'.join(k or '' for k in handler.get_event_hash(**data['event']))).hexdigest()
 
         event = Event.objects.create(
             pk=event_id,
@@ -131,7 +132,7 @@ class SentryClient(object):
         )
         event.set_meta(**data)
 
-        event_message = handler.to_string(event, data.get('__event__'))
+        event_message = handler.to_string(event, data.get('event'))
 
         group, created = Group.objects.get_or_create(
             type=event_type,

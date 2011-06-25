@@ -70,12 +70,12 @@ class Event(models.Model):
     def get_version(self):
         if not self.data:
             return
-        if '__sentry__' not in self.data:
+        if 'sentry' not in self.data:
             return
-        if 'version' not in self.data['__sentry__']:
+        if 'version' not in self.data['sentry']:
             return
-        module = self.data['__sentry__'].get('module', 'ver')
-        return module, self.data['__sentry__']['version']
+        module = self.data['sentry'].get('module', 'ver')
+        return module, self.data['sentry']['version']
 
     def get_processor(self):
         mod_name, class_name = self.type.rsplit('.', 1)

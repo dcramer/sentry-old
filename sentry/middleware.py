@@ -1,5 +1,7 @@
 import sys
 
+from sentry import capture
+
 class WSGIErrorMiddleware(object):
     def __init__(self, application):
         self.application = application
@@ -14,6 +16,7 @@ class WSGIErrorMiddleware(object):
             raise
 
     def handle_exception(self, exc_info, environ):
-        from sentry import capture
-        event_id = capture('Exception', exc_info=exc_info, environ=environ)
+        event_id = capture('Exception', exc_info=exc_info, extra={
+            'environ': environ,
+        })
         return event_id

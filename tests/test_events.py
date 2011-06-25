@@ -22,7 +22,7 @@ class SentryTest(BaseTest):
             date=now,
             time_spent=53,
             data={
-                '__event__': {
+                'event': {
                     'message': 'hello world'
                 }
             },
@@ -75,7 +75,7 @@ class SentryTest(BaseTest):
             date=now + datetime.timedelta(seconds=1),
             time_spent=100,
             data={
-                '__event__': {
+                'event': {
                     'message': 'hello world',
                 },
             },
@@ -129,7 +129,7 @@ class SentryTest(BaseTest):
             date=now + datetime.timedelta(seconds=1),
             time_spent=100,
             data={
-                '__event__': {
+                'event': {
                     'message': 'hello world 2',
                 },
             },
@@ -215,8 +215,8 @@ class SentryTest(BaseTest):
 
         data = event.data
 
-        self.assertTrue('__event__' in data)
-        event_data = data['__event__']
+        self.assertTrue('event' in data)
+        event_data = data['event']
         self.assertTrue('value' in event_data)
         self.assertEquals(event_data['value'], 'foo bar')
         self.assertTrue('type' in event_data)
@@ -257,8 +257,8 @@ class SentryTest(BaseTest):
 
         data = event.data
 
-        self.assertTrue('__event__' in data)
-        event_data = data['__event__']
+        self.assertTrue('event' in data)
+        event_data = data['event']
         self.assertTrue('value' in event_data)
         self.assertEquals(event_data['value'], 'foo bar')
         self.assertTrue('type' in event_data)
