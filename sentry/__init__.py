@@ -105,7 +105,7 @@ app = Flask(__name__)
 from flaskext.babel import Babel
 
 from sentry.core.cleaner import Cleaner
-from sentry.client import get_client
+from sentry.client import ClientProxy
 from sentry.db import get_backend
 
 # Build configuration
@@ -116,7 +116,7 @@ app.config.from_envvar('SENTRY_SETTINGS', silent=True)
 app.db = get_backend(app)
 
 # Load configured client
-app.client = get_client(app)
+app.client = ClientProxy(app)
 
 # Flask-Babel (internationalization)
 app.babel = Babel(app)

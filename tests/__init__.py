@@ -12,6 +12,7 @@ class BaseTest(unittest2.TestCase):
                 'db': 9
             }
         }
+        app.config['CLIENT'] = 'sentry.client.base.SentryClient'
         app.db = get_backend(app)
         
         # Flush the Redis instance
