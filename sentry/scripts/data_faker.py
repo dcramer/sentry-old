@@ -37,9 +37,9 @@ def main():
         'The wise Sir Bedemir was the first to join King Arthur\'s knights, but other illustrious names were soon to follow',
     ]
     urls = [
-        'http://example.com'
-        'http://example.com/foo/bar/'
-        'http://example.com/foo/bar/?baz=biz'
+        'http://example.com',
+        'http://example.com/foo/bar/',
+        'http://example.com/foo/bar/?baz=biz',
     ]
     sql_queries = ['SELECT * FROM table', 'INSERT INTO FOO (a, b, c) VALUES (1, 2, 3)', 'TRUNCATE TABLE baz']
     sql_engines = ['psycopg2', 'mysqldb', 'oracle']
