@@ -16,12 +16,27 @@ except ImportError:
     use_setuptools()
     from setuptools import setup, find_packages
 
+install_requires = [
+    'Flask',
+    'Flask-Babel',
+    'redis',
+    # python-daemon and eventlet are required to run the Sentry indepenent webserver
+    'python-daemon>=1.6',
+    'eventlet>=0.9.15',
+]
+
+try:
+    __import__('uuid')
+except ImportError:
+    # uuid ensures compatibility with older versions of Python
+    install_requires.append('uuid')
+
 tests_require = [
-    'nose',
-    'unittest2',
     'Django>=1.2,<1.4',
     'django-celery',
     'logbook',
+    'nose',
+    'unittest2',
 ]
 
 setup(
@@ -35,18 +50,8 @@ setup(
     packages=find_packages(exclude="example_project"),
     zip_safe=False,
     license='BSD',
-    install_requires=[
-        'Flask',
-        'Flask-Babel',
-        'redis',
-        # python-daemon and eventlet are required to run the Sentry indepenent webserver
-        'python-daemon>=1.6',
-        'eventlet>=0.9.15',
-        # uuid ensures compatibility with older versions of Python
-        'uuid',
-    ],
-    dependency_links=[
-    ],
+    install_requires=install_requires,
+    dependency_links=[],
     tests_require=tests_require,
     extras_require={'test': tests_require},
     test_suite='nose.collector',
