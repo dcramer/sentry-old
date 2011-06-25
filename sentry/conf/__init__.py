@@ -68,6 +68,9 @@ class SentryConfig(object):
 
     # Allow access to Sentry without authentication.
     PUBLIC = False
+    
+    # Allow writes without authentication (including the API)
+    PUBLIC_WRITES = False
 
     # Maximum length of variables before they get truncated
     MAX_LENGTH_LIST = 50

@@ -20,35 +20,38 @@ from flask import request, abort
 
 @app.route('/api/store/', methods=['POST'])
 def store():
-    if not request.environ.get('AUTHORIZATION', '').startswith('Sentry'):
+    has_header = request.environ.get('AUTHORIZATION', '').startswith('Sentry')
+    if not (app.config['PUBLIC_WRITES'] or has_header):
         abort(401,'Unauthorized')
-    
-    auth_vars = parse_auth_header(request.META['AUTHORIZATION'])
-    
-    signature = auth_vars.get('signature')
-    timestamp = auth_vars.get('timestamp')
-    nonce = auth_vars.get('nonce')
 
     data = request.data
 
-    # TODO: check nonce
+    
+    if has_header:
+        auth_vars = parse_auth_header(request.META['AUTHORIZATION'])
+    
+        signature = auth_vars.get('signature')
+        timestamp = auth_vars.get('timestamp')
+        nonce = auth_vars.get('nonce')
 
-    # Signed data packet
-    if signature and timestamp:
-        try:
-            timestamp = float(timestamp)
-        except ValueError:
-            abort(400, 'Invalid Timestamp')
+        # TODO: check nonce
 
-        if timestamp < time.time() - 3600: # 1 hour
-            abort(410, 'Message has expired')
+        # Signed data packet
+        if signature and timestamp:
+            try:
+                timestamp = float(timestamp)
+            except ValueError:
+                abort(400, 'Invalid Timestamp')
 
-        if signature != get_mac_signature(app.config['KEY'], data, timestamp, nonce):
-            abort(403, 'Invalid signature')
-    else:
-        abort(401,'Unauthorized')
+            if timestamp < time.time() - 3600: # 1 hour
+                abort(410, 'Message has expired')
 
-    logger = logging.getLogger('sentry.server')
+            if signature != get_mac_signature(app.config['KEY'], data, timestamp, nonce):
+                abort(403, 'Invalid signature')
+        else:
+            abort(401,'Unauthorized')
+
+    logger = logging.getLogger('sentry.web.api.store')
 
     try:
         data = base64.b64decode(data).decode('zlib')
