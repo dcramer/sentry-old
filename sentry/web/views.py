@@ -225,7 +225,7 @@ def group_details(group_id):
 
     # Render our event's custom output
     processor = last_event.get_processor()
-    event_html = Markup(processor.to_html(last_event, last_event.data.get('event')))
+    event_html = Markup(processor.to_html(last_event, last_event.data.get('event')) or '')
     
     return render_template('sentry/group/details.html', **{
         'page': 'details',
