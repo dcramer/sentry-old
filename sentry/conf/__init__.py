@@ -85,6 +85,10 @@ class SentryConfig(object):
             'key_prefix': 'sentry:'
         }
     }
+
+    PROCESSORS = (
+        'sentry.core.processors.sanitize_passwords_processor',
+    )
     
     # Controls how long entries should stay along before the
     # cleaner removes them. Set to None to disable
