@@ -1,0 +1,14 @@
+{% extends "sentry/layout.html" %}
+
+{% block title %}{{ gettext('Page Not Found') }} | {{ super() }}{% endblock %}
+
+{% block heading %}{{ gettext('Page Not Found') }}{% endblock %}
+
+{% block search %}{% endblock %}
+
+{% block content %}
+    <div class="error-page">
+        <h2>{{ gettext('Page Not Found') }}</h2>
+        <p>{{ gettext('The page you were looking for was not found.') }}</p>
+    </div>
+{% endblock %}
