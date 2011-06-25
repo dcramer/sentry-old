@@ -40,7 +40,10 @@ class Http(Interface):
     # methods as defined by http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html
     METHODS = ('GET', 'POST', 'PUT', 'OPTIONS', 'HEAD', 'DELETE', 'TRACE', 'CONNECT')
     
-    def __init__(self, url, method, data={}, querystring=None, **kwargs):
+    def __init__(self, url, method, data=None, querystring=None, **kwargs):
+        if data is None:
+            data = {}
+
         method = method.upper()
 
         assert method in self.METHODS

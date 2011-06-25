@@ -213,7 +213,9 @@ class SentryClient(object):
 
         return event, group
 
-    def send_remote(self, url, data, headers={}):
+    def send_remote(self, url, data, headers=None):
+        if headers is None:
+            headers = {}
         req = urllib2.Request(url, headers=headers)
         try:
             response = urllib2.urlopen(req, data, app.config['REMOTE_TIMEOUT']).read()

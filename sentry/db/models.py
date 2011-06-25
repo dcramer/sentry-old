@@ -153,7 +153,7 @@ class Manager(object):
     def add_to_index(self, pk, index, score):
         return app.db.add_to_index(self.model, pk, index, score)
 
-    def get_or_create(self, defaults={}, **index):
+    def get_or_create(self, defaults=None, **index):
         # return (instance, created)
 
         pk_set = app.db.list_by_cindex(self.model, **to_db(self.model, index))
@@ -162,7 +162,10 @@ class Manager(object):
         elif pk_set:
             raise self.model.MultipleObjectsReturned
 
-        defaults = defaults.copy()
+        if defaults is None:
+            defaults = {}
+        else:
+            defaults = defaults.copy()
         defaults.update(index)
 
         inst = self.create(**defaults)
