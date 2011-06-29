@@ -108,8 +108,6 @@ This is a rough list of features/APIs which need to be completed (*some* of this
 
 * Exception event handler needs to have an intelligent hash
 
-* Interfaces may be able to be mixed somehow with Events (as they both provide serialization). Possibly have events implement an interface?
-
 * Processor API (for post-processing messages before they get sent to the server)
 
   * Should be an ordered tuple specified in config
