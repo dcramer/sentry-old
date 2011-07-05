@@ -318,4 +318,4 @@ class SentryTest(BaseTest):
         event = Event.objects.get(event_id)
         event_data = event.data['sentry.interfaces.Exception']
         frame = event_data['frames'][0]
-        self.assertEquals(frame['vars']['password'], '********')
+        self.assertEquals(frame['vars']['password'], '****************')
