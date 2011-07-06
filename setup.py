@@ -48,7 +48,7 @@ setup(
     url='http://github.com/dcramer/django-sentry',
     description = 'Exception Logging to a Database in Django',
     long_description=__doc__,
-    packages=find_packages(exclude="example_project"),
+    packages=find_packages(exclude=["example_project", "tests"]),
     zip_safe=False,
     license='BSD',
     install_requires=install_requires,
