@@ -49,10 +49,11 @@ class SQLAlchemyBackend(SentryBackend):
 
     def incr(self, schema, pk, key, amount=1):
         table = model_map[schema]
-        table.update(table.c.id==pk).execute(getattr(table.c, key)==getattr(table.c, key) + amount)
+        table.update(table.c.id==pk, {key: getattr(table.c, key) + amount}).execute()
     
     # meta data is stored in a seperate key to avoid collissions and heavy getall pulls
 
+    # TODO:
     def set_meta(self, schema, pk, **values):
         self.conn.hmset(self._get_metadata_key(schema, pk), values)
 
@@ -61,7 +62,6 @@ class SQLAlchemyBackend(SentryBackend):
 
     def get_data(self, schema, pk):
         return self.conn.hgetall(self._get_data_key(schema, pk))
-
 
     def count(self, schema, index='default'):
         return self.conn.zcard(self._get_index_key(schema, index))
