@@ -59,7 +59,8 @@ setup(
     include_package_data=True,
     entry_points = {
         'console_scripts': [
-            'sentry = sentry.scripts.runner:main',
+            'sentry-web = sentry.web.scripts.runner:main',
+            'sentry-collector = sentry.collector.scripts.runner:main',
         ],
     },
     classifiers=[

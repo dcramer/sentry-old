@@ -136,8 +136,3 @@ capture = app.client.capture
 
 import logging
 logging.basicConfig(level=logging.WARN)
-
-# Import views/templatetags to ensure registration
-import sentry.web.api
-import sentry.web.templatetags
-import sentry.web.views

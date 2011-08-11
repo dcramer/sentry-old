@@ -1,6 +1,6 @@
 """
-sentry.db.backends.redis
-~~~~~~~~~~~~~~~~~~~~~~~~
+sentry.db.backends.sqlalchemy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
 :license: BSD, see LICENSE for more details.
@@ -11,59 +11,46 @@ from __future__ import absolute_import
 from sentry.db.backends.base import SentryBackend
 
 import datetime
-import redis
 
-class RedisBackend(SentryBackend):
-    def __init__(self, host='localhost', port=6379, db=0, key_prefix=''):
-        self.conn = redis.Redis(host, port, db)
-        self.key_prefix = key_prefix
+from sqlalchemy import create_engine
+from sqlalchemy.sql import select
 
-    ## Keys
-    
-    def _get_key(self, key):
-        return '%s:%s' % (self.key_prefix, key)
-    
-    def _get_data_key(self, schema, pk):
-        return self._get_key('data:%s:%s' % (self._get_schema_name(schema), pk))
+from sentry.db.backends.sqlalchemy.models import metadata, model_map
 
-    def _get_metadata_key(self, schema, pk):
-        return self._get_key('metadata:%s:%s' % (self._get_schema_name(schema), pk))
-
-    def _get_index_key(self, schema, index):
-        return self._get_key('index:%s:%s' % (self._get_schema_name(schema), index))
-
-    def _get_relation_key(self, from_schema, from_pk, to_schema):
-        return self._get_key('rindex:%s:%s:%s' % (self._get_schema_name(from_schema), from_pk, self._get_schema_name(to_schema)))
-
-    def _get_constraint_key(self, schema, kwargs):
-        return self._get_key('cindex:%s:%s' % (self._get_schema_name(schema), self._get_composite_key(**kwargs)))
-
-    ## Hash table lookups
+class SQLAlchemyBackend(SentryBackend):
+    def __init__(self, uri, **kwargs):
+        self.engine = create_engine(uri, **kwargs)
+        metadata.bind = self.engine
 
     def create_model(self, schema):
-        return
+        metadata.create(model_map[schema])
+
+    ## Hash table lookups
 
     def add(self, schema, **values):
         # generates a pk and sets the values
         pk = self.generate_key(schema)
-        if values:
-            self.set(schema, pk, **values)
+        table = model_map[schema]
+        table.insert().execute(id=pk, **values)
         return pk
 
     def delete(self, schema, pk):
-        self.conn.delete(self._get_data_key(schema, pk))
-        self.conn.delete(self._get_metadata_key(schema, pk))
+        table = model_map[schema]
+        table.delete(table.c.id==pk).execute()
 
     def set(self, schema, pk, **values):
-        if values:
-            self.conn.hmset(self._get_data_key(schema, pk), values)
+        table = model_map[schema]
+        table.update(table.c.id==pk).execute(**values)
 
     def get(self, schema, pk):
-        return self.conn.hgetall(self._get_data_key(schema, pk))
+        table = model_map[schema]
+        query = select([table], table.c.id==pk)
+        return query.execute().fetchone()
 
     def incr(self, schema, pk, key, amount=1):
-        return self.conn.hincrby(self._get_data_key(schema, pk), key, amount)
-
+        table = model_map[schema]
+        table.update(table.c.id==pk).execute(getattr(table.c, key)==getattr(table.c, key) + amount)
+    
     # meta data is stored in a seperate key to avoid collissions and heavy getall pulls
 
     def set_meta(self, schema, pk, **values):
@@ -74,6 +61,7 @@ class RedisBackend(SentryBackend):
 
     def get_data(self, schema, pk):
         return self.conn.hgetall(self._get_data_key(schema, pk))
+
 
     def count(self, schema, index='default'):
         return self.conn.zcard(self._get_index_key(schema, index))

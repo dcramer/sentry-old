@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-sentry.scripts.runner
-~~~~~~~~~~~~~~~~~~~~~
+sentry.web.scripts.runner
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :copyright: (c) 2010 by the Sentry Team, see AUTHORS for more details.
 :license: BSD, see LICENSE for more details.
@@ -20,7 +20,7 @@ from optparse import OptionParser
 from sentry import VERSION, app
 from sentry.middleware import WSGIErrorMiddleware
 
-class SentryServer(DaemonRunner):
+class SentryWeb(DaemonRunner):
     pidfile_timeout = 10
     start_message = u"started with pid %(pid)d"
 
@@ -62,8 +62,13 @@ class SentryServer(DaemonRunner):
             self.do_action()
 
     def run(self):
+        # Import views/templatetags to ensure registration
+        import sentry.web.templatetags
+        import sentry.web.views
+
         upgrade()
         app.wsgi_app = WSGIErrorMiddleware(app.wsgi_app)
+
         if self.debug:
             app.run(host=self.host, port=self.port, debug=self.debug)
         else:
@@ -138,17 +143,17 @@ def main():
         upgrade()
 
     elif args[0] == 'start':
-        web = SentryServer(host=options.host, port=options.port,
+        web = SentryWeb(host=options.host, port=options.port,
                            pidfile=options.pidfile, logfile=options.logfile,
                            daemonize=options.daemonize, debug=options.debug)
         web.execute(args[0])
 
     elif args[0] == 'restart':
-        web = SentryServer()
+        web = SentryWeb()
         web.execute(args[0])
   
     elif args[0] == 'stop':
-        web = SentryServer(pidfile=options.pidfile, logfile=options.logfile)
+        web = SentryWeb(pidfile=options.pidfile, logfile=options.logfile)
         web.execute(args[0])
 
     elif args[0] == 'cleanup':

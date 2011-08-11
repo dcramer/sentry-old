@@ -27,7 +27,7 @@ class Group(models.Model):
     type            = models.String() # length 32
     hash            = models.String() # length 32
     # one line summary used for rendering
-    message         = models.String()
+    message         = models.Text()
     state           = models.Integer(default=0)
     count           = models.Integer(default=0)
     score           = models.Float(default=0.0)

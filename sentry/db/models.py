@@ -396,6 +396,9 @@ class String(Field):
             value = u''
         return value
 
+class Text(String):
+    pass
+
 class Integer(Field):
     def to_python(self, value=None):
         if value:
