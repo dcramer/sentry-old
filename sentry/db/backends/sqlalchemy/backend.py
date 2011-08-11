@@ -20,7 +20,6 @@ from sentry.db.backends.sqlalchemy.models import metadata, model_map
 class SQLAlchemyBackend(SentryBackend):
     def __init__(self, uri, **kwargs):
         self.engine = create_engine(uri, **kwargs)
-        metadata.bind = self.engine
 
     def create_model(self, schema):
         metadata.create(model_map[schema])
@@ -31,25 +30,29 @@ class SQLAlchemyBackend(SentryBackend):
         # generates a pk and sets the values
         pk = self.generate_key(schema)
         table = model_map[schema]
-        table.insert().execute(id=pk, **values)
+        query = table.insert(id=pk, **values)
+        self.engine.execute(query)
         return pk
 
     def delete(self, schema, pk):
         table = model_map[schema]
-        table.delete(table.c.id==pk).execute()
+        query = table.delete(table.c.id==pk)
+        self.engine.execute(query)
 
     def set(self, schema, pk, **values):
         table = model_map[schema]
-        table.update(table.c.id==pk).execute(**values)
+        query = table.update(table.c.id==pk).values(**values)
+        self.engine.execute(query)
 
     def get(self, schema, pk):
         table = model_map[schema]
         query = select([table], table.c.id==pk)
-        return query.execute().fetchone()
+        return self.engine.execute(query).fetchone()
 
     def incr(self, schema, pk, key, amount=1):
         table = model_map[schema]
-        table.update(table.c.id==pk, {key: getattr(table.c, key) + amount}).execute()
+        query = table.update(table.c.id==pk, {key: getattr(table.c, key) + amount})
+        self.engine.execute(query)
     
     # meta data is stored in a seperate key to avoid collissions and heavy getall pulls
 
