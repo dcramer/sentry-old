@@ -84,6 +84,8 @@ class Exception(BaseEvent):
             'sentry.interfaces.Exception': {
                 'value': transform(exc_value),
                 'type': exc_type,
+            },
+            'sentry.interfaces.Stacktrace': {
                 'frames': self._get_traceback_frames(exc_traceback)
             },
         }

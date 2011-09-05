@@ -42,13 +42,6 @@ function varToggle(link, id) {
   s.innerHTML = s.innerHTML == uarr ? darr : uarr;
   return false;
 }
-function switchPastebinFriendly(link) {
-  s1 = "Switch to copy-and-paste view";
-  s2 = "Switch back to interactive view";
-  link.innerHTML = link.innerHTML == s1 ? s2 : s1;
-  toggle('browserTraceback', 'pastebinTraceback');
-  return false;
-}
 
 function getQueryParams()
 {

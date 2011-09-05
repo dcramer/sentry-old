@@ -63,24 +63,35 @@ class Query(Interface):
             'engine': self.engine,
         }
 
+class Stacktrace(Interface):
+    def __init__(self, frames):
+        self.frames = frames
+    
+    def serialize(self):
+        return {
+            'frames': self.frames,
+        }
+    
+    def to_html(self, event):
+        return render_template('sentry/partial/interfaces/stacktrace.html', **{
+            'frames': self.frames,
+        })
+
 class Exception(Interface):
-    def __init__(self, type, value, frames):
+    def __init__(self, type, value):
         self.type = type
         self.value = value
-        self.frames = frames
     
     def serialize(self):
         return {
             'type': self.type,
             'value': self.value,
-            'frames': self.frames,
         }
     
     def to_html(self, event):
         return render_template('sentry/partial/interfaces/exception.html', **{
             'exception_value': self.value,
             'exception_type': self.type,
-            'frames': self.frames,
         })
 
 class Http(Interface):

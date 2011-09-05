@@ -52,7 +52,9 @@ def store():
     >>>         },
     >>>         "sentry.interfaces.Exception": {
     >>>             "type": "ValueError",
-    >>>             "value": "An example exception",
+    >>>             "value": "An example exception"
+    >>>         },
+    >>>         "sentry.interfaces.Stacktrace": {
     >>>             "frames": [
     >>>                 {
     >>>                     "filename": "/path/to/filename.py",

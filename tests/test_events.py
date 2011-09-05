@@ -242,6 +242,9 @@ class SentryTest(BaseTest):
         self.assertEquals(event_data['value'], 'foo bar')
         self.assertTrue('type' in event_data)
         self.assertEquals(event_data['type'], 'ValueError')
+        
+        self.assertTrue('sentry.interfaces.Stacktrace' in data)
+        event_data = data['sentry.interfaces.Stacktrace']
         self.assertTrue('frames' in event_data)
         self.assertEquals(len(event_data['frames']), 1)
         frame = event_data['frames'][0]
@@ -284,6 +287,9 @@ class SentryTest(BaseTest):
         self.assertEquals(event_data['value'], 'foo bar')
         self.assertTrue('type' in event_data)
         self.assertEquals(event_data['type'], 'ValueError')
+
+        self.assertTrue('sentry.interfaces.Stacktrace' in data)
+        event_data = data['sentry.interfaces.Stacktrace']
         self.assertTrue('frames' in event_data)
         self.assertEquals(len(event_data['frames']), 1)
         frame = event_data['frames'][0]
@@ -316,6 +322,7 @@ class SentryTest(BaseTest):
         event_id = capture('Exception')
 
         event = Event.objects.get(event_id)
-        event_data = event.data['sentry.interfaces.Exception']
+        self.assertTrue('sentry.interfaces.Stacktrace' in event.data)
+        event_data = event.data['sentry.interfaces.Stacktrace']
         frame = event_data['frames'][0]
         self.assertEquals(frame['vars']['password'], '****************')

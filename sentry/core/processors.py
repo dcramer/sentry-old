@@ -19,9 +19,9 @@ class Processor(object):
 def sanitize_passwords_processor(data):
     """ Asterisk out passwords from password fields in frames.
     """
-    if 'sentry.interfaces.Exception' in data:
-        if 'frames' in data['sentry.interfaces.Exception']:
-            for frame in data['sentry.interfaces.Exception']['frames']:
+    if 'sentry.interfaces.Stacktrace' in data:
+        if 'frames' in data['sentry.interfaces.Stacktrace']:
+            for frame in data['sentry.interfaces.Stacktrace']['frames']:
                 if 'vars' in frame:
                     for k,v in frame['vars'].iteritems():
                         if k.startswith('password'):
