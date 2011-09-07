@@ -88,7 +88,10 @@ def transform(value, stack=[], context=None):
         ret = 'cycle'
     transform_rec = lambda o: transform(o, stack + [value], context)
     if isinstance(value, (tuple, list, set, frozenset)):
-        ret = type(value)(transform_rec(o) for o in value)
+        try:
+            ret = type(value)(transform_rec(o) for o in value[:])
+        except:
+            ret = tuple(transform_rec(o) for o in value)
     elif isinstance(value, uuid.UUID):
         ret = repr(value)
     elif isinstance(value, datetime.datetime):
