@@ -90,7 +90,7 @@ class SentryConfig(object):
     }
 
     PROCESSORS = (
-        'sentry.core.processors.sanitize_passwords_processor',
+        'sentry.core.processors.SantizePasswordsProcessor',
     )
     
     # Controls how long entries should stay along before the

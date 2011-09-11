@@ -16,30 +16,7 @@ from pprint import pformat
 from types import ClassType, TypeType
 
 import sentry
-from sentry import app
 from sentry.utils.encoding import force_unicode
-
-FILTER_CACHE = None
-def get_filters(from_cache=True):
-    global FILTER_CACHE
-
-    if FILTER_CACHE is None or not from_cache:
-        filters = []
-        for key, path in app.config['FILTERS']:
-            module_name, class_name = path.rsplit('.', 1)
-            try:
-                module = __import__(module_name, {}, {}, class_name)
-                handler = getattr(module, class_name)
-            except Exception:
-                logger = logging.getLogger('sentry.web.filters')
-                logger.exception('Unable to import %s' % (path,))
-                continue
-            filters.append(handler(key))
-
-        FILTER_CACHE = filters
-
-    for f in FILTER_CACHE:
-        yield f
 
 def construct_checksum(level=logging.ERROR, class_name='', traceback='', message='', **kwargs):
     checksum = hashlib.md5(str(level))

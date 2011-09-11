@@ -17,12 +17,12 @@ import time
 import uuid
 import urllib2
 
-from sentry import app
-
 import sentry
+from sentry import app
+from sentry.core import processors
+from sentry.models import Group, Event
 from sentry.utils import get_versions, transform
 from sentry.utils.api import get_mac_signature, get_auth_header
-from sentry.models import Group, Event
 
 class ModuleProxyCache(dict):
     def __missing__(self, key):
@@ -156,7 +156,7 @@ class SentryClient(object):
         #         if thrash_count > app.config['THRASHING_LIMIT']:
         #             return
 
-        # for filter_ in get_filters():
+        # for filter_ in filters.all():
         #     kwargs = filter_(None).process(kwargs) or kwargs
 
         # create ID client-side so that it can be passed to application
@@ -164,9 +164,8 @@ class SentryClient(object):
 
         # Run the data through processors
 
-        PROCESSORS = app.config['PROCESSORS']
-        for processor in PROCESSORS:
-            data.update(self.module_cache[processor](data))
+        for processor in processors.all():
+            data.update(self.module_cache[processor].process(data))
 
         # Make sure all data is coerced
         data = transform(data)

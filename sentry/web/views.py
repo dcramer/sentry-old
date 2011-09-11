@@ -19,8 +19,8 @@ from flask import render_template, redirect, request, url_for, \
 from sentry import app
 from sentry.core.plugins import GroupActionProvider
 from sentry.models import Group, Event, EventType
+from sentry.web import filters
 from sentry.web.templatetags import with_priority
-from sentry.utils import get_filters
 from sentry.utils.shortcuts import get_object_or_404
 
 uuid_re = re.compile(r'^[a-z0-9]{32}$')
@@ -111,7 +111,7 @@ def search():
 @login_required
 @app.route('/')
 def index():
-    filter_list = list(get_filters())
+    filter_list = list(filters.all())
 
     try:
         page = int(request.args.get('p', 1))
@@ -159,7 +159,7 @@ def ajax_handler():
 
     if op == 'poll':
         filters = []
-        for filter_ in get_filters():
+        for filter_ in filters.all():
             filters.append(filter_(request))
 
         event_list = Group.objects

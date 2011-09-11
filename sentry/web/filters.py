@@ -9,10 +9,34 @@ sentry.web.filters
 # Widget api is pretty ugly
 from __future__ import absolute_import
 
-from sentry import app
-from sentry.models import Tag
+import logging
+
 from flask import request
 from jinja2 import Markup, escape
+from sentry import app
+from sentry.models import Tag
+
+_CACHE = None
+def all(from_cache=True):
+    global _CACHE
+
+    if _CACHE is None or not from_cache:
+        modules = []
+        for key, path in app.config['FILTERS']:
+            module_name, class_name = path.rsplit('.', 1)
+            try:
+                module = __import__(module_name, {}, {}, class_name)
+                handler = getattr(module, class_name)
+            except Exception:
+                logger = logging.getLogger(__name__)
+                logger.exception('Unable to import %s' % (path,))
+                continue
+            modules.append(handler(key))
+
+        _CACHE = modules
+
+    for f in _CACHE:
+        yield f
 
 class Widget(object):
     def __init__(self, filter):
